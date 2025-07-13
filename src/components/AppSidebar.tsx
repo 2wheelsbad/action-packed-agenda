@@ -1,5 +1,5 @@
 
-import { Calendar, CheckSquare, FileText, Home, Plus } from "lucide-react";
+import { Calendar, CheckSquare, FileText, Home, Plus, Clock } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -16,6 +16,7 @@ import {
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Todo List", url: "/todos", icon: CheckSquare },
+  { title: "Time Log", url: "/timelog", icon: Clock },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Notes", url: "/notes", icon: FileText },
 ];
