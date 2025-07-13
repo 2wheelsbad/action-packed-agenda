@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, GripVertical, Trash2, Edit3 } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit3, CheckSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Todo {
