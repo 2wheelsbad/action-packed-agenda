@@ -3,87 +3,99 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Productivity-focused design system with calming blues and greens */
+/* CYBERPUNK HACKER TERMINAL THEME */
 
 @layer base {
   :root {
-    --background: 248, 250, 252;
-    --foreground: 15, 23, 42;
+    --background: 0, 0, 0;
+    --foreground: 0, 255, 65;
 
-    --card: 255, 255, 255;
-    --card-foreground: 15, 23, 42;
+    --card: 5, 5, 5;
+    --card-foreground: 0, 255, 65;
 
-    --popover: 255, 255, 255;
-    --popover-foreground: 15, 23, 42;
+    --popover: 0, 0, 0;
+    --popover-foreground: 0, 255, 65;
 
-    --primary: 14, 165, 233;
-    --primary-foreground: 248, 250, 252;
+    --primary: 0, 255, 65;
+    --primary-foreground: 0, 0, 0;
 
-    --secondary: 241, 245, 249;
-    --secondary-foreground: 51, 65, 85;
+    --secondary: 10, 10, 10;
+    --secondary-foreground: 0, 255, 255;
 
-    --muted: 241, 245, 249;
-    --muted-foreground: 100, 116, 139;
+    --muted: 15, 15, 15;
+    --muted-foreground: 120, 120, 120;
 
-    --accent: 220, 252, 231;
-    --accent-foreground: 22, 163, 74;
+    --accent: 255, 0, 255;
+    --accent-foreground: 0, 0, 0;
 
-    --destructive: 239, 68, 68;
-    --destructive-foreground: 248, 250, 252;
+    --destructive: 255, 0, 0;
+    --destructive-foreground: 255, 255, 255;
 
-    --border: 226, 232, 240;
-    --input: 226, 232, 240;
-    --ring: 14, 165, 233;
+    --border: 0, 255, 65;
+    --input: 10, 10, 10;
+    --ring: 0, 255, 255;
 
-    --radius: 0.75rem;
+    --radius: 0.25rem;
 
-    --sidebar-background: 255, 255, 255;
-    --sidebar-foreground: 51, 65, 85;
-    --sidebar-primary: 14, 165, 233;
-    --sidebar-primary-foreground: 248, 250, 252;
-    --sidebar-accent: 241, 245, 249;
-    --sidebar-accent-foreground: 51, 65, 85;
-    --sidebar-border: 226, 232, 240;
-    --sidebar-ring: 14, 165, 233;
+    --terminal-bg: 0, 0, 0;
+    --terminal-text: 0, 255, 65;
+    --terminal-prompt: 255, 0, 255;
+    --terminal-error: 255, 0, 0;
+    --terminal-success: 0, 255, 255;
+    --terminal-warning: 255, 255, 0;
+
+    --sidebar-background: 5, 5, 5;
+    --sidebar-foreground: 0, 255, 65;
+    --sidebar-primary: 0, 255, 65;
+    --sidebar-primary-foreground: 0, 0, 0;
+    --sidebar-accent: 10, 10, 10;
+    --sidebar-accent-foreground: 0, 255, 255;
+    --sidebar-border: 0, 255, 65;
+    --sidebar-ring: 0, 255, 255;
+
+    /* Cyberpunk neon glow effects */
+    --glow-primary: 0 0 10px rgb(0, 255, 65), 0 0 20px rgb(0, 255, 65), 0 0 30px rgb(0, 255, 65);
+    --glow-accent: 0 0 10px rgb(255, 0, 255), 0 0 20px rgb(255, 0, 255), 0 0 30px rgb(255, 0, 255);
+    --glow-cyan: 0 0 10px rgb(0, 255, 255), 0 0 20px rgb(0, 255, 255), 0 0 30px rgb(0, 255, 255);
   }
 
   .dark {
     --background: 0, 0, 0;
-    --foreground: 240, 230, 255;
+    --foreground: 0, 255, 65;
 
-    --card: 15, 15, 25;
-    --card-foreground: 240, 230, 255;
+    --card: 5, 5, 5;
+    --card-foreground: 0, 255, 65;
 
-    --popover: 15, 15, 25;
-    --popover-foreground: 240, 230, 255;
+    --popover: 0, 0, 0;
+    --popover-foreground: 0, 255, 65;
 
-    --primary: 147, 51, 234;
-    --primary-foreground: 255, 255, 255;
+    --primary: 0, 255, 65;
+    --primary-foreground: 0, 0, 0;
 
-    --secondary: 30, 30, 45;
-    --secondary-foreground: 200, 190, 255;
+    --secondary: 10, 10, 10;
+    --secondary-foreground: 0, 255, 255;
 
-    --muted: 25, 25, 35;
-    --muted-foreground: 150, 150, 170;
+    --muted: 15, 15, 15;
+    --muted-foreground: 120, 120, 120;
 
-    --accent: 99, 102, 241;
-    --accent-foreground: 255, 255, 255;
+    --accent: 255, 0, 255;
+    --accent-foreground: 0, 0, 0;
 
-    --destructive: 220, 38, 38;
+    --destructive: 255, 0, 0;
     --destructive-foreground: 255, 255, 255;
 
-    --border: 40, 40, 55;
-    --input: 40, 40, 55;
-    --ring: 147, 51, 234;
+    --border: 0, 255, 65;
+    --input: 10, 10, 10;
+    --ring: 0, 255, 255;
 
-    --sidebar-background: 10, 10, 20;
-    --sidebar-foreground: 200, 190, 255;
-    --sidebar-primary: 147, 51, 234;
-    --sidebar-primary-foreground: 255, 255, 255;
-    --sidebar-accent: 25, 25, 35;
-    --sidebar-accent-foreground: 200, 190, 255;
-    --sidebar-border: 40, 40, 55;
-    --sidebar-ring: 147, 51, 234;
+    --sidebar-background: 5, 5, 5;
+    --sidebar-foreground: 0, 255, 65;
+    --sidebar-primary: 0, 255, 65;
+    --sidebar-primary-foreground: 0, 0, 0;
+    --sidebar-accent: 10, 10, 10;
+    --sidebar-accent-foreground: 0, 255, 255;
+    --sidebar-border: 0, 255, 65;
+    --sidebar-ring: 0, 255, 255;
   }
 }
 
@@ -93,26 +105,91 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans dark;
-    background: linear-gradient(135deg, rgb(var(--background)) 0%, rgb(15, 23, 42) 100%);
+    @apply bg-background text-foreground font-mono dark;
+    background: 
+      radial-gradient(ellipse at top, rgba(0, 255, 65, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+      rgb(var(--background));
     min-height: 100vh;
+    font-family: 'Courier New', 'Monaco', 'Lucida Console', monospace;
   }
 }
 
 @layer utilities {
-  .glass-effect {
-    @apply bg-white/80 backdrop-blur-sm border border-white/20;
+  .terminal-effect {
+    @apply bg-black/90 backdrop-blur-sm border border-primary/50;
+    box-shadow: 
+      inset 0 0 20px rgba(0, 255, 65, 0.1),
+      0 0 20px rgba(0, 255, 65, 0.2);
+  }
+  
+  .neon-glow {
+    text-shadow: var(--glow-primary);
+  }
+  
+  .neon-glow-accent {
+    text-shadow: var(--glow-accent);
+  }
+  
+  .neon-glow-cyan {
+    text-shadow: var(--glow-cyan);
   }
   
   .task-item {
-    @apply transition-all duration-200 hover:shadow-md hover:scale-[1.02];
+    @apply transition-all duration-300 hover:shadow-lg hover:scale-[1.02] border border-primary/20;
+    background: linear-gradient(135deg, rgba(0, 255, 65, 0.1) 0%, rgba(0, 0, 0, 0.9) 100%);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+  }
+  
+  .terminal-border {
+    border: 1px solid rgb(var(--primary));
+    box-shadow: 
+      0 0 5px rgba(0, 255, 65, 0.5),
+      inset 0 0 5px rgba(0, 255, 65, 0.1);
+  }
+  
+  .cyber-card {
+    background: linear-gradient(135deg, rgba(0, 255, 65, 0.05) 0%, rgba(0, 0, 0, 0.95) 100%);
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    box-shadow: 
+      0 0 20px rgba(0, 255, 65, 0.2),
+      inset 0 0 20px rgba(0, 255, 65, 0.05);
   }
   
   .drag-handle {
-    @apply cursor-grab active:cursor-grabbing;
+    @apply cursor-grab active:cursor-grabbing text-primary;
   }
   
   .productivity-gradient {
     background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--accent)) 100%);
+  }
+  
+  /* Terminal cursor animation */
+  .terminal-cursor::after {
+    content: '█';
+    animation: blink 1s infinite;
+    color: rgb(var(--primary));
+  }
+  
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+  
+  /* Scanlines effect */
+  .scanlines::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      transparent 50%,
+      rgba(0, 255, 65, 0.03) 50%
+    );
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 1;
   }
 }
