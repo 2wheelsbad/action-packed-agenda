@@ -16,9 +16,10 @@ interface CyberTerminalProps {
   onAddTodo?: (text: string, priority: 'low' | 'medium' | 'high') => void;
   onAddTimeLog?: (activity: string, duration: number) => void;
   onAddCalendarEvent?: (title: string, date: Date) => void;
+  onAddNote?: (title: string, content: string, tags: string[]) => void;
 }
 
-export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent }: CyberTerminalProps) {
+export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onAddNote }: CyberTerminalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [commands, setCommands] = useState<Command[]>([
@@ -73,6 +74,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent }: C
           "├── todo.add <task> [--priority=low|medium|high]",
           "├── time.log <activity> <duration_minutes>",
           "├── calendar.add <event_title> [--date=YYYY-MM-DD]",
+          "├── note.add <title> <content> [--tags=tag1,tag2]",
           "├── sys.status - Show system status",
           "├── clear - Clear terminal",
           "└── hack.time - Show current time",
@@ -80,7 +82,8 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent }: C
           "Examples:",
           "• todo.add 'Complete project' --priority=high",
           "• time.log 'Deep work' 120",
-          "• calendar.add 'Team meeting' --date=2024-01-15"
+          "• calendar.add 'Team meeting' --date=2024-01-15",
+          "• note.add 'Ideas' 'Some great ideas for project' --tags=work,ideas"
         ];
         type = 'success';
         break;
@@ -150,6 +153,36 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent }: C
             type = 'success';
             toast({
               title: "Calendar event added via terminal",
+              description: title,
+            });
+          }
+        }
+        break;
+
+      case 'note.add':
+        if (args.length < 3) {
+          output = ["ERROR: Usage: note.add <title> <content> [--tags=tag1,tag2]"];
+          type = 'error';
+        } else {
+          const tagsFlag = args.find(arg => arg.startsWith('--tags='));
+          const tags = tagsFlag ? tagsFlag.split('=')[1].split(',').map(tag => tag.trim()) : [];
+          const argsWithoutFlags = args.slice(1).filter(arg => !arg.startsWith('--'));
+          
+          if (argsWithoutFlags.length < 2) {
+            output = ["ERROR: Both title and content are required"];
+            type = 'error';
+          } else {
+            const title = argsWithoutFlags[0].replace(/['"]/g, '');
+            const content = argsWithoutFlags.slice(1).join(' ').replace(/['"]/g, '');
+            
+            onAddNote?.(title, content, tags);
+            output = [`[✓] Note created: "${title}"`];
+            if (tags.length > 0) {
+              output.push(`    Tags: ${tags.join(', ')}`);
+            }
+            type = 'success';
+            toast({
+              title: "Note added via terminal",
               description: title,
             });
           }
@@ -233,7 +266,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent }: C
     return (
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 cyber-card neon-glow z-50"
+        className="fixed bottom-4 right-4 cyber-card z-50"
         size="lg"
       >
         <Terminal className="w-5 h-5 mr-2" />
@@ -246,10 +279,10 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent }: C
     <Card className={`fixed bottom-4 right-4 w-96 cyber-card scanlines z-50 ${isMinimized ? 'h-12' : 'h-96'} transition-all duration-300`}>
       {/* Terminal Header */}
       <div className="flex items-center justify-between p-2 border-b border-primary/30 bg-black/50">
-        <div className="flex items-center gap-2">
-          <Terminal className="w-4 h-4 text-primary neon-glow" />
-          <span className="text-xs font-mono neon-glow">CYBER_TERMINAL</span>
-        </div>
+         <div className="flex items-center gap-2">
+           <Terminal className="w-4 h-4 text-primary" />
+           <span className="text-xs font-mono">CYBER_TERMINAL</span>
+         </div>
         <div className="flex gap-1">
           <Button
             variant="ghost"
@@ -280,17 +313,17 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent }: C
             {commands.map((command, index) => (
               <div key={index} className="mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-accent neon-glow-accent">root@cyber:~$</span>
+                  <span className="text-accent">root@cyber:~$</span>
                   <span className="text-primary">{command.input}</span>
                 </div>
                 {command.output.map((line, lineIndex) => (
                   <div
                     key={lineIndex}
-                    className={`ml-4 ${
-                      command.type === 'error' ? 'text-destructive' :
-                      command.type === 'success' ? 'text-secondary-foreground neon-glow-cyan' :
-                      'text-muted-foreground'
-                    }`}
+                     className={`ml-4 ${
+                       command.type === 'error' ? 'text-destructive' :
+                       command.type === 'success' ? 'text-secondary-foreground' :
+                       'text-muted-foreground'
+                     }`}
                   >
                     {line}
                   </div>
@@ -301,8 +334,8 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent }: C
 
           {/* Terminal Input */}
           <div className="p-3 border-t border-primary/30 bg-black/50">
-            <div className="flex items-center gap-2 font-mono text-xs">
-              <span className="text-accent neon-glow-accent">root@cyber:~$</span>
+             <div className="flex items-center gap-2 font-mono text-xs">
+               <span className="text-accent">root@cyber:~$</span>
               <input
                 ref={inputRef}
                 type="text"

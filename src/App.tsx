@@ -1,4 +1,5 @@
 
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,7 +20,15 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleAddNote = (title: string, content: string, tags: string[]) => {
+    // This will trigger a re-render to show the new note
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -113,12 +122,13 @@ const App = () => (
                 </Routes>
               </main>
             </div>
-            <CyberTerminal />
+            <CyberTerminal onAddNote={handleAddNote} />
           </div>
         </SidebarProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
