@@ -186,10 +186,25 @@ const App = () => {
                       </Routes>
                     </main>
                     
-                    {/* Lower Half - Terminal */}
-                    <div className="h-1/2 bg-black/30">
-                      <CyberTerminal onAddNote={handleAddNote} />
-                    </div>
+                     {/* Lower Half - Terminal */}
+                     <div className="h-1/2 bg-black/30">
+                       <CyberTerminal 
+                         embedded={true}
+                         onAddTodo={(text, priority) => {
+                           // Handle todo addition
+                           console.log('Add todo:', text, priority);
+                         }}
+                         onAddTimeLog={(activity, duration) => {
+                           // Handle time log addition
+                           console.log('Add time log:', activity, duration);
+                         }}
+                         onAddCalendarEvent={(title, date) => {
+                           // Handle calendar event addition
+                           console.log('Add calendar event:', title, date);
+                         }}
+                         onAddNote={handleAddNote}
+                       />
+                     </div>
                   </div>
                 </div>
               </div>

@@ -17,10 +17,11 @@ interface CyberTerminalProps {
   onAddTimeLog?: (activity: string, duration: number) => void;
   onAddCalendarEvent?: (title: string, date: Date) => void;
   onAddNote?: (title: string, content: string, tags: string[]) => void;
+  embedded?: boolean;
 }
 
-export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onAddNote }: CyberTerminalProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onAddNote, embedded = false }: CyberTerminalProps) {
+  const [isOpen, setIsOpen] = useState(embedded);
   const [isMinimized, setIsMinimized] = useState(false);
   const [commands, setCommands] = useState<Command[]>([
     {
@@ -42,10 +43,10 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen && !isMinimized && inputRef.current) {
+    if ((isOpen || embedded) && !isMinimized && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [isOpen, isMinimized]);
+  }, [isOpen, isMinimized, embedded]);
 
   useEffect(() => {
     if (terminalRef.current) {
@@ -262,7 +263,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
     }
   };
 
-  if (!isOpen) {
+  if (!isOpen && !embedded) {
     return (
       <Button
         onClick={() => setIsOpen(true)}
@@ -275,8 +276,12 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
     );
   }
 
+  const containerClass = embedded 
+    ? "w-full h-full cyber-card scanlines flex flex-col"
+    : `fixed bottom-4 right-4 w-96 cyber-card scanlines z-50 ${isMinimized ? 'h-12' : 'h-96'} transition-all duration-300`;
+
   return (
-    <Card className={`fixed bottom-4 right-4 w-96 cyber-card scanlines z-50 ${isMinimized ? 'h-12' : 'h-96'} transition-all duration-300`}>
+    <Card className={containerClass}>
       {/* Terminal Header */}
       <div className="flex items-center justify-between p-2 border-b border-primary/30 bg-black/50">
          <div className="flex items-center gap-2">
@@ -292,24 +297,26 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
           >
             {isMinimized ? <Maximize2 className="w-3 h-3" /> : <Minimize2 className="w-3 h-3" />}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsOpen(false)}
-            className="h-6 w-6 p-0 hover:bg-destructive/20"
-          >
-            <X className="w-3 h-3" />
-          </Button>
+           {!embedded && (
+             <Button
+               variant="ghost"
+               size="sm"
+               onClick={() => setIsOpen(false)}
+               className="h-6 w-6 p-0 hover:bg-destructive/20"
+             >
+               <X className="w-3 h-3" />
+             </Button>
+           )}
         </div>
       </div>
 
       {!isMinimized && (
         <>
           {/* Terminal Output */}
-          <div
-            ref={terminalRef}
-            className="flex-1 p-3 overflow-y-auto font-mono text-xs bg-black/80 max-h-64"
-          >
+           <div
+             ref={terminalRef}
+             className={`flex-1 p-3 overflow-y-auto font-mono text-xs bg-black/80 ${embedded ? '' : 'max-h-64'}`}
+           >
             {commands.map((command, index) => (
               <div key={index} className="mb-2">
                 <div className="flex items-center gap-2">
