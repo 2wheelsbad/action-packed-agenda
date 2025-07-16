@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -26,13 +26,16 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, GripVertical, Trash2, Edit3, CheckSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Todo {
   id: string;
   text: string;
   completed: boolean;
   priority: "low" | "medium" | "high";
-  createdAt: Date;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
 }
 
 interface SortableTodoItemProps {
@@ -151,32 +154,10 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit }: SortableTodoItem
 }
 
 export function TodoList() {
-  const [todos, setTodos] = useState<Todo[]>([
-    {
-      id: "1",
-      text: "Plan weekly goals and objectives",
-      completed: false,
-      priority: "high",
-      createdAt: new Date(),
-    },
-    {
-      id: "2",
-      text: "Review project documentation",
-      completed: true,
-      priority: "medium",
-      createdAt: new Date(),
-    },
-    {
-      id: "3",
-      text: "Schedule team meeting for next week",
-      completed: false,
-      priority: "low",
-      createdAt: new Date(),
-    },
-  ]);
-
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
   const [newPriority, setNewPriority] = useState<"low" | "medium" | "high">("medium");
+  const [loading, setLoading] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -184,6 +165,39 @@ export function TodoList() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Fetch todos from database
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  const fetchTodos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        toast({
+          title: "Error fetching todos",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setTodos((data || []) as Todo[]);
+      }
+    } catch (error) {
+      console.error('Error fetching todos:', error);
+      toast({
+        title: "Error fetching todos",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -202,51 +216,166 @@ export function TodoList() {
     }
   };
 
-  const addTodo = () => {
+  const addTodo = async () => {
     if (newTodo.trim()) {
-      const todo: Todo = {
-        id: Date.now().toString(),
-        text: newTodo.trim(),
-        completed: false,
-        priority: newPriority,
-        createdAt: new Date(),
-      };
-      setTodos([...todos, todo]);
-      setNewTodo("");
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast({
+            title: "Error",
+            description: "You must be logged in to add todos",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('todos')
+          .insert({
+            text: newTodo.trim(),
+            priority: newPriority,
+            completed: false,
+            user_id: user.id
+          })
+          .select()
+          .single();
+
+        if (error) {
+          toast({
+            title: "Error adding todo",
+            description: error.message,
+            variant: "destructive"
+          });
+        } else {
+          setTodos([data as Todo, ...todos]);
+          setNewTodo("");
+          toast({
+            title: "Todo added",
+            description: `"${data.text}" has been added to your list.`,
+          });
+        }
+      } catch (error) {
+        console.error('Error adding todo:', error);
+        toast({
+          title: "Error adding todo",
+          description: "An unexpected error occurred",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const toggleTodo = async (id: string) => {
+    const todo = todos.find(t => t.id === id);
+    if (!todo) return;
+
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .update({ completed: !todo.completed })
+        .eq('id', id);
+
+      if (error) {
+        toast({
+          title: "Error updating todo",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setTodos(todos.map(todo => 
+          todo.id === id ? { ...todo, completed: !todo.completed } : todo
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating todo:', error);
       toast({
-        title: "Todo added",
-        description: `"${todo.text}" has been added to your list.`,
+        title: "Error updating todo",
+        description: "An unexpected error occurred",
+        variant: "destructive"
       });
     }
   };
 
-  const toggleTodo = (id: string) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
-  };
-
-  const deleteTodo = (id: string) => {
+  const deleteTodo = async (id: string) => {
     const todo = todos.find(t => t.id === id);
-    setTodos(todos.filter(todo => todo.id !== id));
-    toast({
-      title: "Todo deleted",
-      description: `"${todo?.text}" has been removed.`,
-    });
+    if (!todo) return;
+
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        toast({
+          title: "Error deleting todo",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setTodos(todos.filter(todo => todo.id !== id));
+        toast({
+          title: "Todo deleted",
+          description: `"${todo?.text}" has been removed.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting todo:', error);
+      toast({
+        title: "Error deleting todo",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
-  const editTodo = (id: string, text: string) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, text } : todo
-    ));
-    toast({
-      title: "Todo updated",
-      description: "Your todo has been updated successfully.",
-    });
+  const editTodo = async (id: string, text: string) => {
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .update({ text })
+        .eq('id', id);
+
+      if (error) {
+        toast({
+          title: "Error updating todo",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setTodos(todos.map(todo => 
+          todo.id === id ? { ...todo, text } : todo
+        ));
+        toast({
+          title: "Todo updated",
+          description: "Your todo has been updated successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating todo:', error);
+      toast({
+        title: "Error updating todo",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
   const completedCount = todos.filter(todo => todo.completed).length;
   const totalCount = todos.length;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Todo List</h2>
+            <p className="text-muted-foreground">Loading todos...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

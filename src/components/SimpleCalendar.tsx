@@ -1,40 +1,60 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface CalendarEvent {
   id: string;
   title: string;
-  date: Date;
+  date: string;
   type: "meeting" | "deadline" | "reminder";
+  created_at: string;
+  updated_at: string;
+  user_id: string;
 }
 
 export function SimpleCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events] = useState<CalendarEvent[]>([
-    {
-      id: "1",
-      title: "Team standup",
-      date: new Date(),
-      type: "meeting",
-    },
-    {
-      id: "2",
-      title: "Project deadline",
-      date: new Date(Date.now() + 86400000 * 3), // 3 days from now
-      type: "deadline",
-    },
-    {
-      id: "3",
-      title: "Doctor appointment",
-      date: new Date(Date.now() + 86400000 * 7), // 1 week from now
-      type: "reminder",
-    },
-  ]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch events from database
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .order('date', { ascending: true });
+
+      if (error) {
+        toast({
+          title: "Error fetching events",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setEvents((data || []) as CalendarEvent[]);
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      toast({
+        title: "Error fetching events",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -49,7 +69,8 @@ export function SimpleCalendar() {
   };
 
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => isSameDay(event.date, date));
+    const dateStr = date.toISOString().split('T')[0];
+    return events.filter(event => event.date === dateStr);
   };
 
   const getEventTypeColor = (type: string) => {
@@ -143,15 +164,15 @@ export function SimpleCalendar() {
         </h3>
         <div className="space-y-3">
           {events
-            .filter(event => event.date >= new Date())
-            .sort((a, b) => a.date.getTime() - b.date.getTime())
+            .filter(event => new Date(event.date) >= new Date())
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
             .slice(0, 5)
             .map((event) => (
               <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
                   <h4 className="font-medium">{event.title}</h4>
                   <p className="text-sm text-muted-foreground">
-                    {format(event.date, "MMM d, yyyy 'at' h:mm a")}
+                    {format(new Date(event.date), "MMM d, yyyy")}
                   </p>
                 </div>
                 <Badge className={getEventTypeColor(event.type)}>
