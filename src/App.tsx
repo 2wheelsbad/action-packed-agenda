@@ -12,6 +12,7 @@ import { NavLink } from "react-router-dom";
 import { Home, CheckSquare, Clock, Calendar, FileText, Zap, LogOut } from "lucide-react";
 import { CyberTerminal } from "@/components/CyberTerminal";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import type { User, Session } from "@supabase/supabase-js";
 import DashboardPage from "./pages/DashboardPage";
 import TodosPage from "./pages/TodosPage";
@@ -29,6 +30,7 @@ const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Set up auth state listener
@@ -50,8 +52,144 @@ const App = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleAddNote = (title: string, content: string, tags: string[]) => {
-    setRefreshTrigger(prev => prev + 1);
+  const handleAddTodo = async (text: string, priority: 'low' | 'medium' | 'high') => {
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .insert([
+          {
+            user_id: user?.id,
+            text,
+            priority,
+            completed: false
+          }
+        ]);
+
+      if (error) {
+        toast({
+          title: "Error adding todo",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Todo added successfully",
+          description: text
+        });
+      }
+    } catch (error) {
+      console.error('Error adding todo:', error);
+      toast({
+        title: "Error adding todo",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddTimeLog = async (activity: string, duration: number) => {
+    try {
+      const { error } = await supabase
+        .from('time_logs')
+        .insert([
+          {
+            user_id: user?.id,
+            activity,
+            duration
+          }
+        ]);
+
+      if (error) {
+        toast({
+          title: "Error adding time log",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Time log added successfully",
+          description: `${activity} - ${duration} minutes`
+        });
+      }
+    } catch (error) {
+      console.error('Error adding time log:', error);
+      toast({
+        title: "Error adding time log",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddCalendarEvent = async (title: string, date: Date) => {
+    try {
+      const { error } = await supabase
+        .from('calendar_events')
+        .insert([
+          {
+            user_id: user?.id,
+            title,
+            date: date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+            type: 'reminder'
+          }
+        ]);
+
+      if (error) {
+        toast({
+          title: "Error adding calendar event",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Calendar event added successfully",
+          description: title
+        });
+      }
+    } catch (error) {
+      console.error('Error adding calendar event:', error);
+      toast({
+        title: "Error adding calendar event",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddNote = async (title: string, content: string, tags: string[]) => {
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .insert([
+          {
+            user_id: user?.id,
+            title,
+            content,
+            tags
+          }
+        ]);
+
+      if (error) {
+        toast({
+          title: "Error adding note",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Note added successfully",
+          description: title
+        });
+        setRefreshTrigger(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast({
+        title: "Error adding note",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleLogout = async () => {
@@ -188,22 +326,13 @@ const App = () => {
                     
                      {/* Terminal - Fixed Height */}
                      <div className="h-72 bg-black/30">
-                       <CyberTerminal 
-                         embedded={true}
-                         onAddTodo={(text, priority) => {
-                           // Handle todo addition
-                           console.log('Add todo:', text, priority);
-                         }}
-                         onAddTimeLog={(activity, duration) => {
-                           // Handle time log addition
-                           console.log('Add time log:', activity, duration);
-                         }}
-                         onAddCalendarEvent={(title, date) => {
-                           // Handle calendar event addition
-                           console.log('Add calendar event:', title, date);
-                         }}
-                         onAddNote={handleAddNote}
-                       />
+                        <CyberTerminal 
+                          embedded={true}
+                          onAddTodo={handleAddTodo}
+                          onAddTimeLog={handleAddTimeLog}
+                          onAddCalendarEvent={handleAddCalendarEvent}
+                          onAddNote={handleAddNote}
+                        />
                      </div>
                   </div>
                 </div>
