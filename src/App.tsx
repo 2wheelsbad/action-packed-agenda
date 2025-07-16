@@ -19,6 +19,7 @@ import TimeLogPage from "./pages/TimeLogPage";
 import CalendarPage from "./pages/CalendarPage";
 import NotesPage from "./pages/NotesPage";
 import AuthPage from "./pages/AuthPage";
+import TerminalAuthPage from "./pages/TerminalAuthPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,7 +77,8 @@ const App = () => {
         <BrowserRouter>
           {!user ? (
             <Routes>
-              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/auth" element={<TerminalAuthPage />} />
+              <Route path="/auth/signup" element={<AuthPage />} />
               <Route path="*" element={<Navigate to="/auth" replace />} />
             </Routes>
           ) : (
@@ -175,6 +177,7 @@ const App = () => {
                       <Route path="/calendar" element={<CalendarPage />} />
                       <Route path="/notes" element={<NotesPage />} />
                       <Route path="/auth" element={<Navigate to="/" replace />} />
+                      <Route path="/auth/signup" element={<Navigate to="/" replace />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </main>

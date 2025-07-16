@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,14 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Zap } from "lucide-react";
+import { Mail, Zap, ArrowLeft } from "lucide-react";
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleGoogleAuth = async () => {
     setLoading(true);
@@ -37,37 +38,24 @@ export default function AuthPage() {
     }
   };
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (error) throw error;
-        
-        toast({
-          title: "Welcome back!",
-          description: "You have been successfully logged in."
-        });
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`
-          }
-        });
-        if (error) throw error;
-        
-        toast({
-          title: "Account created!",
-          description: "Please check your email to verify your account."
-        });
-      }
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+      if (error) throw error;
+      
+      toast({
+        title: "Account created!",
+        description: "Please check your email to verify your account."
+      });
     } catch (error: any) {
       toast({
         title: "Authentication Error",
@@ -88,11 +76,21 @@ export default function AuthPage() {
             <CardTitle className="text-2xl font-mono neon-glow">CYBER_PRODUCTIVE</CardTitle>
           </div>
           <CardDescription className="text-muted-foreground">
-            {isLogin ? "Access your cyber workspace" : "Create your cyber account"}
+            Create your cyber account
           </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-6">
+          {/* Back to Terminal Button */}
+          <Button
+            onClick={() => navigate('/auth')}
+            variant="ghost"
+            className="w-full gap-2 font-mono terminal-border hover:neon-glow"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Terminal
+          </Button>
+
           {/* Google OAuth Button */}
           <Button
             onClick={handleGoogleAuth}
@@ -119,7 +117,7 @@ export default function AuthPage() {
           </div>
 
           {/* Email/Password Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4">
+          <form onSubmit={handleSignUp} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -138,10 +136,11 @@ export default function AuthPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Enter your password (min 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 className="terminal-border"
               />
             </div>
@@ -152,19 +151,9 @@ export default function AuthPage() {
               className="w-full gap-2 font-mono terminal-border neon-glow hover:neon-glow"
             >
               <Mail className="w-4 h-4" />
-              {isLogin ? "Sign In" : "Sign Up"}
+              Create Account
             </Button>
           </form>
-
-          <div className="text-center">
-            <Button
-              variant="link"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground font-mono"
-            >
-              {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
