@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Terminal, Minimize2, Maximize2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Command {
   input: string;
@@ -21,15 +23,18 @@ interface CyberTerminalProps {
 }
 
 export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onAddNote, embedded = false }: CyberTerminalProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(embedded);
   const [isMinimized, setIsMinimized] = useState(false);
   const [commands, setCommands] = useState<Command[]>([
     {
       input: "system.boot()",
       output: [
-        ">>> CYBERPUNK PRODUCTIVITY TERMINAL v2.077 <<<",
-        ">>> Initializing neural interface...",
-        ">>> Connection established",
+        ">>> CYBERPUNK PRODUCTIVITY TERMINAL v3.0 <<<",
+        ">>> Enhanced neural interface loaded...",
+        ">>> Smart time tracking initialized...",
+        ">>> Database connection established",
         ">>> Type 'help' for available commands",
       ],
       timestamp: new Date(),
@@ -39,8 +44,27 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
   const [currentInput, setCurrentInput] = useState("");
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
+  const [activeTimeLog, setActiveTimeLog] = useState<{activity: string, startTime: number} | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
+
+  // Load active time log from localStorage on mount
+  useEffect(() => {
+    const savedTimeLog = localStorage.getItem('activeTimeLog');
+    if (savedTimeLog) {
+      setActiveTimeLog(JSON.parse(savedTimeLog));
+    }
+  }, []);
+
+  // Save active time log to localStorage when it changes
+  useEffect(() => {
+    if (activeTimeLog) {
+      localStorage.setItem('activeTimeLog', JSON.stringify(activeTimeLog));
+    } else {
+      localStorage.removeItem('activeTimeLog');
+    }
+  }, [activeTimeLog]);
 
   useEffect(() => {
     if ((isOpen || embedded) && !isMinimized && inputRef.current) {
@@ -54,7 +78,55 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
     }
   }, [commands]);
 
-  const executeCommand = (input: string) => {
+  // Helper function to parse arguments with support for short flags
+  const parseArgs = (args: string[]) => {
+    const parsed: {[key: string]: string} = {};
+    const positional: string[] = [];
+    
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      if (arg.startsWith('--')) {
+        const [key, value] = arg.split('=');
+        parsed[key] = value || args[i + 1];
+        if (!value) i++; // Skip next arg if it was used as value
+      } else if (arg.startsWith('-') && arg.length > 1) {
+        // Short flag mapping
+        const shortFlag = arg.substring(1);
+        const flagMap: {[key: string]: string} = {
+          'p': 'priority',
+          'd': 'date',
+          't': 'tags',
+          'h': 'help',
+          'f': 'format'
+        };
+        const fullFlag = flagMap[shortFlag];
+        if (fullFlag) {
+          parsed[`--${fullFlag}`] = args[i + 1];
+          i++; // Skip next arg
+        }
+      } else {
+        positional.push(arg);
+      }
+    }
+    
+    return { parsed, positional };
+  };
+
+  // Helper function to get current page name
+  const getCurrentPageName = () => {
+    const path = location.pathname;
+    const pathMap: {[key: string]: string} = {
+      '/': 'dashboard',
+      '/dashboard': 'dashboard',
+      '/todos': 'todos',
+      '/timelog': 'timelog',
+      '/calendar': 'calendar',
+      '/notes': 'notes'
+    };
+    return pathMap[path] || 'unknown';
+  };
+
+  const executeCommand = async (input: string) => {
     const trimmedInput = input.trim();
     if (!trimmedInput) return;
 
@@ -64,117 +136,457 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
 
     const args = trimmedInput.split(' ');
     const command = args[0].toLowerCase();
+    const { parsed, positional } = parseArgs(args.slice(1));
     
     let output: string[] = [];
     let type: 'success' | 'error' | 'info' = 'info';
 
-    switch (command) {
-      case 'help':
-        output = [
-          "AVAILABLE COMMANDS:",
-          "├── todo.add <task> [--priority=low|medium|high]",
-          "├── time.log <activity> <duration_minutes>",
-          "├── calendar.add <event_title> [--date=YYYY-MM-DD]",
-          "├── note.add <title> <content> [--tags=tag1,tag2]",
-          "├── sys.status - Show system status",
-          "├── clear - Clear terminal",
-          "└── hack.time - Show current time",
-          "",
-          "Examples:",
-          "• todo.add 'Complete project' --priority=high",
-          "• time.log 'Deep work' 120",
-          "• calendar.add 'Team meeting' --date=2024-01-15",
-          "• note.add 'Ideas' 'Some great ideas for project' --tags=work,ideas"
-        ];
-        type = 'success';
-        break;
-
-      case 'todo.add':
-        if (args.length < 2) {
-          output = ["ERROR: Task description required"];
-          type = 'error';
-        } else {
-          const priorityFlag = args.find(arg => arg.startsWith('--priority='));
-          const priority = priorityFlag ? priorityFlag.split('=')[1] as 'low' | 'medium' | 'high' : 'medium';
-          const taskText = args.slice(1).filter(arg => !arg.startsWith('--')).join(' ').replace(/['"]/g, '');
-          
-          if (['low', 'medium', 'high'].includes(priority)) {
-            onAddTodo?.(taskText, priority);
-            output = [`[✓] Task added: "${taskText}" (priority: ${priority})`];
-            type = 'success';
-            toast({
-              title: "Task added via terminal",
-              description: taskText,
-            });
+    try {
+      switch (command) {
+        case 'help':
+          if (positional.length > 0) {
+            const helpCommand = positional[0];
+            const helpTexts: {[key: string]: string[]} = {
+              'todo.add': [
+                "todo.add <task> [-p|--priority=low|medium|high]",
+                "Add a new todo item",
+                "Examples:",
+                "• todo.add 'Complete project' -p high",
+                "• todo.add 'Review code' --priority=medium"
+              ],
+              'todo.list': [
+                "todo.list [-p|--priority=low|medium|high]",
+                "List todos, optionally filtered by priority",
+                "Examples:",
+                "• todo.list",
+                "• todo.list -p high"
+              ],
+              'time.start': [
+                "time.start <activity>",
+                "Start time tracking for an activity",
+                "Auto-stops previous activity if running",
+                "Examples:",
+                "• time.start 'Deep work session'",
+                "• time.start 'Meeting with team'"
+              ],
+              'nav.dash': [
+                "nav.dash | goto.dashboard",
+                "Navigate to dashboard page",
+                "Examples:",
+                "• nav.dash",
+                "• goto.dashboard"
+              ]
+            };
+            output = helpTexts[helpCommand] || [`No help available for '${helpCommand}'`];
           } else {
-            output = ["ERROR: Invalid priority. Use low, medium, or high"];
+            output = [
+              "ENHANCED TERMINAL COMMANDS v3.0:",
+              "",
+              "📍 NAVIGATION:",
+              "├── nav.dash, goto.dashboard - Dashboard",
+              "├── nav.todos, goto.tasks - Todo list",
+              "├── nav.time, goto.timelog - Time tracking",
+              "├── nav.calendar, goto.calendar - Calendar",
+              "├── nav.notes, goto.notes - Notes",
+              "└── nav.back - Go back",
+              "",
+              "✅ TODO MANAGEMENT:",
+              "├── todo.add <task> [-p high|medium|low]",
+              "├── todo.list [-p priority]",
+              "├── todo.complete <id>",
+              "├── todo.delete <id>",
+              "└── todo.priority <id> -p <priority>",
+              "",
+              "⏱️ TIME TRACKING:",
+              "├── time.start <activity> - Start tracking",
+              "├── time.stop - Stop current session",
+              "├── time.status - Show active session",
+              "├── time.log <activity> <minutes> - Manual entry",
+              "└── time.today - Today's summary",
+              "",
+              "📅 CALENDAR & NOTES:",
+              "├── cal.add <event> [-d YYYY-MM-DD]",
+              "├── cal.today - Today's events",
+              "├── note.add <title> <content> [-t tags]",
+              "└── note.search <keyword>",
+              "",
+              "🔧 SYSTEM:",
+              "├── sys.status - System information",
+              "├── history - Command history",
+              "├── clear - Clear terminal",
+              "└── help <command> - Detailed help",
+              "",
+              "💡 Use 'help <command>' for detailed usage"
+            ];
+          }
+          type = 'success';
+          break;
+
+        // Navigation Commands
+        case 'nav.dash':
+        case 'goto.dashboard':
+          setNavigationHistory(prev => [...prev, location.pathname]);
+          navigate('/dashboard');
+          output = ["[✓] Navigated to dashboard"];
+          type = 'success';
+          break;
+
+        case 'nav.todos':
+        case 'goto.tasks':
+          setNavigationHistory(prev => [...prev, location.pathname]);
+          navigate('/todos');
+          output = ["[✓] Navigated to todos"];
+          type = 'success';
+          break;
+
+        case 'nav.time':
+        case 'goto.timelog':
+          setNavigationHistory(prev => [...prev, location.pathname]);
+          navigate('/timelog');
+          output = ["[✓] Navigated to time log"];
+          type = 'success';
+          break;
+
+        case 'nav.calendar':
+        case 'goto.calendar':
+          setNavigationHistory(prev => [...prev, location.pathname]);
+          navigate('/calendar');
+          output = ["[✓] Navigated to calendar"];
+          type = 'success';
+          break;
+
+        case 'nav.notes':
+        case 'goto.notes':
+          setNavigationHistory(prev => [...prev, location.pathname]);
+          navigate('/notes');
+          output = ["[✓] Navigated to notes"];
+          type = 'success';
+          break;
+
+        case 'nav.back':
+          if (navigationHistory.length > 0) {
+            const lastPath = navigationHistory[navigationHistory.length - 1];
+            setNavigationHistory(prev => prev.slice(0, -1));
+            navigate(lastPath);
+            output = [`[✓] Navigated back to ${lastPath}`];
+            type = 'success';
+          } else {
+            output = ["No navigation history available"];
             type = 'error';
           }
-        }
-        break;
+          break;
 
-      case 'time.log':
-        if (args.length < 3) {
-          output = ["ERROR: Usage: time.log <activity> <duration_minutes>"];
-          type = 'error';
-        } else {
-          const duration = parseInt(args[args.length - 1]);
-          const activity = args.slice(1, -1).join(' ').replace(/['"]/g, '');
-          
-          if (isNaN(duration)) {
-            output = ["ERROR: Duration must be a number"];
+        case 'nav.refresh':
+          window.location.reload();
+          return;
+
+        // Enhanced Todo Management
+        case 'todo.add':
+          if (positional.length < 1) {
+            output = ["ERROR: Task description required"];
             type = 'error';
           } else {
-            onAddTimeLog?.(activity, duration);
-            output = [`[✓] Time logged: "${activity}" - ${duration} minutes`];
+            const priority = (parsed['--priority'] || parsed['-p'] || 'medium') as 'low' | 'medium' | 'high';
+            const taskText = positional.join(' ').replace(/['"]/g, '');
+            
+            if (['low', 'medium', 'high'].includes(priority)) {
+              onAddTodo?.(taskText, priority);
+              output = [`[✓] Task added: "${taskText}" (priority: ${priority})`];
+              type = 'success';
+              toast({
+                title: "Task added via terminal",
+                description: taskText,
+              });
+            } else {
+              output = ["ERROR: Invalid priority. Use low, medium, or high"];
+              type = 'error';
+            }
+          }
+          break;
+
+        case 'todo.list':
+          try {
+            const priorityFilter = parsed['--priority'] || parsed['-p'];
+            let query = supabase.from('todos').select('*').order('created_at', { ascending: false });
+            
+            if (priorityFilter) {
+              query = query.eq('priority', priorityFilter);
+            }
+            
+            const { data: todos, error } = await query;
+            
+            if (error) {
+              output = [`ERROR: ${error.message}`];
+              type = 'error';
+            } else {
+              if (todos?.length === 0) {
+                output = ["No todos found"];
+                type = 'info';
+              } else {
+                output = [
+                  `Found ${todos?.length} todo(s):`,
+                  ""
+                ];
+                todos?.forEach((todo, index) => {
+                  const status = todo.completed ? '✅' : '⏳';
+                  const priority = todo.priority.toUpperCase();
+                  const shortId = todo.id.substring(0, 8);
+                  output.push(`${index + 1}. ${status} [${priority}] ${todo.text} (ID: ${shortId})`);
+                });
+                type = 'success';
+              }
+            }
+          } catch (error) {
+            output = ["ERROR: Failed to fetch todos"];
+            type = 'error';
+          }
+          break;
+
+        case 'todo.complete':
+          if (positional.length < 1) {
+            output = ["ERROR: Todo ID required"];
+            type = 'error';
+          } else {
+            const todoId = positional[0];
+            try {
+              const { error } = await supabase
+                .from('todos')
+                .update({ completed: true })
+                .eq('id', todoId);
+              
+              if (error) {
+                output = [`ERROR: ${error.message}`];
+                type = 'error';
+              } else {
+                output = [`[✓] Todo ${todoId.substring(0, 8)} marked as completed`];
+                type = 'success';
+                toast({
+                  title: "Todo completed",
+                  description: "Task marked as completed via terminal",
+                });
+              }
+            } catch (error) {
+              output = ["ERROR: Failed to complete todo"];
+              type = 'error';
+            }
+          }
+          break;
+
+        case 'todo.delete':
+          if (positional.length < 1) {
+            output = ["ERROR: Todo ID required"];
+            type = 'error';
+          } else {
+            const todoId = positional[0];
+            try {
+              const { error } = await supabase
+                .from('todos')
+                .delete()
+                .eq('id', todoId);
+              
+              if (error) {
+                output = [`ERROR: ${error.message}`];
+                type = 'error';
+              } else {
+                output = [`[✓] Todo ${todoId.substring(0, 8)} deleted`];
+                type = 'success';
+                toast({
+                  title: "Todo deleted",
+                  description: "Task deleted via terminal",
+                });
+              }
+            } catch (error) {
+              output = ["ERROR: Failed to delete todo"];
+              type = 'error';
+            }
+          }
+          break;
+
+        // Smart Time Tracking
+        case 'time.start':
+          if (positional.length < 1) {
+            output = ["ERROR: Activity name required"];
+            type = 'error';
+          } else {
+            const activity = positional.join(' ').replace(/['"]/g, '');
+            
+            // Stop previous activity if running
+            if (activeTimeLog) {
+              const duration = Math.round((Date.now() - activeTimeLog.startTime) / 60000);
+              await onAddTimeLog?.(activeTimeLog.activity, duration);
+              output = [`[✓] Stopped: "${activeTimeLog.activity}" (${duration} minutes)`];
+            }
+            
+            // Start new activity
+            setActiveTimeLog({ activity, startTime: Date.now() });
+            output = [...output, `[✓] Started tracking: "${activity}"`];
             type = 'success';
             toast({
-              title: "Time logged via terminal",
-              description: `${activity} - ${duration}m`,
+              title: "Time tracking started",
+              description: activity,
             });
           }
-        }
-        break;
+          break;
 
-      case 'calendar.add':
-        if (args.length < 2) {
-          output = ["ERROR: Event title required"];
-          type = 'error';
-        } else {
-          const dateFlag = args.find(arg => arg.startsWith('--date='));
-          const date = dateFlag ? new Date(dateFlag.split('=')[1]) : new Date();
-          const title = args.slice(1).filter(arg => !arg.startsWith('--')).join(' ').replace(/['"]/g, '');
-          
-          if (dateFlag && isNaN(date.getTime())) {
-            output = ["ERROR: Invalid date format. Use YYYY-MM-DD"];
+        case 'time.stop':
+          if (!activeTimeLog) {
+            output = ["No active time tracking session"];
             type = 'error';
           } else {
-            onAddCalendarEvent?.(title, date);
-            output = [`[✓] Event added: "${title}" on ${format(date, 'yyyy-MM-dd')}`];
+            const duration = Math.round((Date.now() - activeTimeLog.startTime) / 60000);
+            await onAddTimeLog?.(activeTimeLog.activity, duration);
+            output = [`[✓] Stopped: "${activeTimeLog.activity}" (${duration} minutes)`];
+            setActiveTimeLog(null);
             type = 'success';
             toast({
-              title: "Calendar event added via terminal",
-              description: title,
+              title: "Time tracking stopped",
+              description: `${activeTimeLog.activity} - ${duration}m`,
             });
           }
-        }
-        break;
+          break;
 
-      case 'note.add':
-        if (args.length < 3) {
-          output = ["ERROR: Usage: note.add <title> <content> [--tags=tag1,tag2]"];
-          type = 'error';
-        } else {
-          const tagsFlag = args.find(arg => arg.startsWith('--tags='));
-          const tags = tagsFlag ? tagsFlag.split('=')[1].split(',').map(tag => tag.trim()) : [];
-          const argsWithoutFlags = args.slice(1).filter(arg => !arg.startsWith('--'));
-          
-          if (argsWithoutFlags.length < 2) {
-            output = ["ERROR: Both title and content are required"];
+        case 'time.status':
+          if (!activeTimeLog) {
+            output = ["No active time tracking session"];
+            type = 'info';
+          } else {
+            const elapsed = Math.round((Date.now() - activeTimeLog.startTime) / 60000);
+            output = [
+              "ACTIVE TIME TRACKING:",
+              `├── Activity: ${activeTimeLog.activity}`,
+              `├── Started: ${format(new Date(activeTimeLog.startTime), 'HH:mm:ss')}`,
+              `└── Elapsed: ${elapsed} minutes`
+            ];
+            type = 'success';
+          }
+          break;
+
+        case 'time.log':
+          if (positional.length < 2) {
+            output = ["ERROR: Usage: time.log <activity> <duration_minutes>"];
             type = 'error';
           } else {
-            const title = argsWithoutFlags[0].replace(/['"]/g, '');
-            const content = argsWithoutFlags.slice(1).join(' ').replace(/['"]/g, '');
+            const duration = parseInt(positional[positional.length - 1]);
+            const activity = positional.slice(0, -1).join(' ').replace(/['"]/g, '');
+            
+            if (isNaN(duration)) {
+              output = ["ERROR: Duration must be a number"];
+              type = 'error';
+            } else {
+              onAddTimeLog?.(activity, duration);
+              output = [`[✓] Time logged: "${activity}" - ${duration} minutes`];
+              type = 'success';
+              toast({
+                title: "Time logged via terminal",
+                description: `${activity} - ${duration}m`,
+              });
+            }
+          }
+          break;
+
+        case 'time.today':
+          try {
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const { data: logs, error } = await supabase
+              .from('time_logs')
+              .select('*')
+              .eq('date', today)
+              .order('created_at', { ascending: false });
+            
+            if (error) {
+              output = [`ERROR: ${error.message}`];
+              type = 'error';
+            } else {
+              const totalTime = logs?.reduce((sum, log) => sum + log.duration, 0) || 0;
+              output = [
+                `TODAY'S TIME SUMMARY (${today}):`,
+                `├── Total time: ${totalTime} minutes (${Math.round(totalTime/60*10)/10}h)`,
+                `├── Sessions: ${logs?.length || 0}`,
+                ""
+              ];
+              
+              if (logs?.length) {
+                output.push("Recent sessions:");
+                logs.slice(0, 5).forEach((log, index) => {
+                  output.push(`${index + 1}. ${log.activity} - ${log.duration}m`);
+                });
+              }
+              type = 'success';
+            }
+          } catch (error) {
+            output = ["ERROR: Failed to fetch time logs"];
+            type = 'error';
+          }
+          break;
+
+        // Enhanced Calendar Commands
+        case 'cal.add':
+          if (positional.length < 1) {
+            output = ["ERROR: Event title required"];
+            type = 'error';
+          } else {
+            const dateStr = parsed['--date'] || parsed['-d'];
+            const date = dateStr ? new Date(dateStr) : new Date();
+            const title = positional.join(' ').replace(/['"]/g, '');
+            
+            if (dateStr && isNaN(date.getTime())) {
+              output = ["ERROR: Invalid date format. Use YYYY-MM-DD"];
+              type = 'error';
+            } else {
+              onAddCalendarEvent?.(title, date);
+              output = [`[✓] Event added: "${title}" on ${format(date, 'yyyy-MM-dd')}`];
+              type = 'success';
+              toast({
+                title: "Calendar event added via terminal",
+                description: title,
+              });
+            }
+          }
+          break;
+
+        case 'cal.today':
+          try {
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const { data: events, error } = await supabase
+              .from('calendar_events')
+              .select('*')
+              .eq('date', today)
+              .order('created_at', { ascending: false });
+            
+            if (error) {
+              output = [`ERROR: ${error.message}`];
+              type = 'error';
+            } else {
+              output = [
+                `TODAY'S EVENTS (${today}):`,
+                ""
+              ];
+              
+              if (events?.length === 0) {
+                output.push("No events scheduled for today");
+              } else {
+                events?.forEach((event, index) => {
+                  output.push(`${index + 1}. ${event.title} (${event.type})`);
+                });
+              }
+              type = 'success';
+            }
+          } catch (error) {
+            output = ["ERROR: Failed to fetch calendar events"];
+            type = 'error';
+          }
+          break;
+
+        // Enhanced Notes Commands
+        case 'note.add':
+          if (positional.length < 2) {
+            output = ["ERROR: Usage: note.add <title> <content> [-t tag1,tag2]"];
+            type = 'error';
+          } else {
+            const tagsStr = parsed['--tags'] || parsed['-t'];
+            const tags = tagsStr ? tagsStr.split(',').map(tag => tag.trim()) : [];
+            const title = positional[0].replace(/['"]/g, '');
+            const content = positional.slice(1).join(' ').replace(/['"]/g, '');
             
             onAddNote?.(title, content, tags);
             output = [`[✓] Note created: "${title}"`];
@@ -187,44 +599,109 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
               description: title,
             });
           }
-        }
-        break;
+          break;
 
-      case 'sys.status':
-        output = [
-          "SYSTEM STATUS:",
-          "├── Neural Interface: ONLINE",
-          "├── Productivity Matrix: ACTIVE",
-          "├── Data Streams: FLOWING",
-          "├── Memory Usage: 42.7%",
-          "└── Threat Level: MINIMAL",
-          "",
-          `Current Time: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}`
-        ];
-        type = 'success';
-        break;
+        case 'note.search':
+          if (positional.length < 1) {
+            output = ["ERROR: Search keyword required"];
+            type = 'error';
+          } else {
+            const keyword = positional.join(' ');
+            try {
+              const { data: notes, error } = await supabase
+                .from('notes')
+                .select('*')
+                .or(`title.ilike.%${keyword}%,content.ilike.%${keyword}%`)
+                .order('created_at', { ascending: false });
+              
+              if (error) {
+                output = [`ERROR: ${error.message}`];
+                type = 'error';
+              } else {
+                output = [
+                  `Found ${notes?.length || 0} note(s) matching "${keyword}":`,
+                  ""
+                ];
+                
+                notes?.forEach((note, index) => {
+                  const shortId = note.id.substring(0, 8);
+                  output.push(`${index + 1}. ${note.title} (ID: ${shortId})`);
+                  if (note.tags?.length) {
+                    output.push(`    Tags: ${note.tags.join(', ')}`);
+                  }
+                });
+                type = 'success';
+              }
+            } catch (error) {
+              output = ["ERROR: Failed to search notes"];
+              type = 'error';
+            }
+          }
+          break;
 
-      case 'hack.time':
-        output = [
-          `> Accessing temporal matrix...`,
-          `> Current timestamp: ${Date.now()}`,
-          `> Local time: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}`,
-          `> Time zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
-        ];
-        type = 'success';
-        break;
+        // System Commands
+        case 'sys.status':
+          const currentPage = getCurrentPageName();
+          output = [
+            "SYSTEM STATUS:",
+            "├── Neural Interface: ONLINE",
+            "├── Productivity Matrix: ACTIVE",
+            "├── Database: CONNECTED",
+            `├── Current Location: ${currentPage}`,
+            `├── Active Time Log: ${activeTimeLog ? activeTimeLog.activity : 'None'}`,
+            `├── Memory Usage: ${Math.round(Math.random() * 100)}%`,
+            "└── Threat Level: MINIMAL",
+            "",
+            `Current Time: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}`
+          ];
+          type = 'success';
+          break;
 
-      case 'clear':
-        setCommands([]);
-        setCurrentInput("");
-        return;
+        case 'history':
+          output = [
+            "COMMAND HISTORY:",
+            ""
+          ];
+          commandHistory.slice(-10).forEach((cmd, index) => {
+            output.push(`${commandHistory.length - 10 + index + 1}. ${cmd}`);
+          });
+          type = 'success';
+          break;
 
-      default:
-        output = [
-          `Command '${command}' not recognized.`,
-          "Type 'help' for available commands."
-        ];
-        type = 'error';
+        case 'data.refresh':
+          window.location.reload();
+          return;
+
+        case 'clear':
+          setCommands([]);
+          setCurrentInput("");
+          return;
+
+        case 'hack.time':
+          output = [
+            `> Accessing temporal matrix...`,
+            `> Current timestamp: ${Date.now()}`,
+            `> Local time: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}`,
+            `> Time zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`,
+            `> Active session: ${activeTimeLog ? activeTimeLog.activity : 'None'}`,
+          ];
+          type = 'success';
+          break;
+
+        default:
+          output = [
+            `Command '${command}' not recognized.`,
+            "Type 'help' for available commands.",
+            "Use 'help <command>' for detailed usage."
+          ];
+          type = 'error';
+      }
+    } catch (error) {
+      output = [
+        `ERROR: Command execution failed`,
+        `Details: ${error instanceof Error ? error.message : 'Unknown error'}`
+      ];
+      type = 'error';
     }
 
     const newCommand: Command = {
