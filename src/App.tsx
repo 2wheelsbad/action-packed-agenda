@@ -170,10 +170,10 @@ const App = () => {
                     </nav>
                   </header>
                   
-                  {/* Main Content - Split layout with terminal taking half */}
+                  {/* Main Content - Split layout with terminal at bottom */}
                   <div className="flex-1 flex flex-col">
-                    {/* Upper Half - Main Content */}
-                    <main className="h-1/2 overflow-auto bg-black/20 terminal-border border-b">
+                    {/* Main Content Area */}
+                    <main className="flex-1 overflow-auto bg-black/20 terminal-border border-b px-6 py-4">
                       <Routes>
                         <Route path="/" element={<DashboardPage />} />
                         <Route path="/todos" element={<TodosPage />} />
@@ -186,8 +186,8 @@ const App = () => {
                       </Routes>
                     </main>
                     
-                     {/* Lower Half - Terminal */}
-                     <div className="h-1/2 bg-black/30">
+                     {/* Terminal - Fixed Height */}
+                     <div className="h-72 bg-black/30">
                        <CyberTerminal 
                          embedded={true}
                          onAddTodo={(text, priority) => {
