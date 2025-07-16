@@ -166,76 +166,51 @@ export default function TerminalAuthPage() {
 
   return (
     <div className="min-h-screen bg-black scanlines flex flex-col">
-      {/* Upper Half - Branding and Info */}
-      <div className="h-1/2 flex flex-col items-center justify-center p-8 terminal-border border-b">
-        <div className="max-w-2xl mx-auto text-center space-y-8">
-          {/* Logo */}
-          <div className="flex items-center justify-center gap-3">
-            <Zap className="w-16 h-16 text-primary neon-glow animate-pulse" />
-            <h1 className="text-6xl font-bold font-mono neon-glow bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-              CYBER_PRODUCTIVE
-            </h1>
-          </div>
-          
-          {/* Version and Description */}
-          <div className="space-y-4">
-            <p className="text-xl text-primary font-mono neon-glow">
-              v2.0.1 - Authentication Terminal
-            </p>
-            <p className="text-lg text-muted-foreground font-mono max-w-lg mx-auto">
-              Enter commands in the terminal below to access your cyber workspace
-            </p>
-          </div>
-          
-          {/* Command Guide */}
-          <div className="bg-black/50 terminal-border p-6 rounded-lg max-w-md mx-auto">
-            <h3 className="text-sm font-mono text-primary mb-3">QUICK COMMANDS:</h3>
-            <div className="space-y-1 text-sm font-mono text-muted-foreground">
-              <div><span className="text-green-400">login -g</span> → Google OAuth</div>
-              <div><span className="text-green-400">sign-up</span> → Create Account</div>
-              <div><span className="text-green-400">help</span> → Show All Commands</div>
-            </div>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-center p-6 terminal-border border-b">
+        <div className="flex items-center gap-2">
+          <Zap className="w-8 h-8 text-primary neon-glow" />
+          <h1 className="text-2xl font-bold font-mono neon-glow">CYBER_PRODUCTIVE</h1>
         </div>
       </div>
 
-      {/* Lower Half - Terminal */}
-      <div className="h-1/2 flex flex-col">
-        <div className="flex-1 bg-black/95 p-6">
-          <div 
-            ref={terminalRef}
-            className="h-full bg-black terminal-border p-6 font-mono text-sm overflow-y-auto space-y-1 rounded-lg"
-          >
-            {lines.map((line, index) => (
-              <div key={index} className={`${getLineColor(line.type)} leading-relaxed`}>
-                {line.type === 'command' && <span className="text-primary">cyber@productive:~$ </span>}
-                {line.text}
-              </div>
-            ))}
-            
-            {/* Current command line */}
-            <div className="flex items-center pt-2">
-              <span className="text-primary">cyber@productive:~$ </span>
-              <form onSubmit={handleSubmit} className="flex-1">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={currentCommand}
-                  onChange={(e) => setCurrentCommand(e.target.value)}
-                  disabled={isProcessing}
-                  className="flex-1 bg-transparent border-none outline-none text-foreground font-mono caret-primary text-base"
-                  placeholder={isProcessing ? "Processing..." : "Enter command..."}
-                />
-              </form>
+      {/* Terminal */}
+      <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-6">
+        <div 
+          ref={terminalRef}
+          className="flex-1 bg-black/90 terminal-border p-6 font-mono text-sm overflow-y-auto space-y-1"
+        >
+          {lines.map((line, index) => (
+            <div key={index} className={`${getLineColor(line.type)} leading-relaxed`}>
+              {line.type === 'command' && <span className="text-primary">cyber@productive:~$ </span>}
+              {line.text}
             </div>
-            
-            {/* Cursor */}
-            <div className="flex items-center mt-1">
-              <span className="text-primary">cyber@productive:~$ </span>
-              <div className="w-2 h-5 bg-primary opacity-75 animate-pulse ml-1"></div>
-            </div>
+          ))}
+          
+          {/* Current command line */}
+          <div className="flex items-center">
+            <span className="text-primary">cyber@productive:~$ </span>
+            <form onSubmit={handleSubmit} className="flex-1">
+              <input
+                ref={inputRef}
+                type="text"
+                value={currentCommand}
+                onChange={(e) => setCurrentCommand(e.target.value)}
+                disabled={isProcessing}
+                className="flex-1 bg-transparent border-none outline-none text-foreground font-mono caret-primary"
+                placeholder={isProcessing ? "Processing..." : "Enter command..."}
+              />
+            </form>
           </div>
+          
+          {/* Cursor */}
+          <div className="w-2 h-4 bg-primary opacity-75 animate-pulse inline-block"></div>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="text-center p-4 text-sm text-muted-foreground font-mono">
+        Terminal Auth Interface - Type "help" for commands
       </div>
     </div>
   );

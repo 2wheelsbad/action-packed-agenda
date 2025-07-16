@@ -169,20 +169,29 @@ const App = () => {
                       </Button>
                     </nav>
                   </header>
-                  <main className="flex-1 overflow-auto bg-black/20">
-                    <Routes>
-                      <Route path="/" element={<DashboardPage />} />
-                      <Route path="/todos" element={<TodosPage />} />
-                      <Route path="/timelog" element={<TimeLogPage />} />
-                      <Route path="/calendar" element={<CalendarPage />} />
-                      <Route path="/notes" element={<NotesPage />} />
-                      <Route path="/auth" element={<Navigate to="/" replace />} />
-                      <Route path="/auth/signup" element={<Navigate to="/" replace />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
+                  
+                  {/* Main Content - Split layout with terminal taking half */}
+                  <div className="flex-1 flex flex-col">
+                    {/* Upper Half - Main Content */}
+                    <main className="h-1/2 overflow-auto bg-black/20 terminal-border border-b">
+                      <Routes>
+                        <Route path="/" element={<DashboardPage />} />
+                        <Route path="/todos" element={<TodosPage />} />
+                        <Route path="/timelog" element={<TimeLogPage />} />
+                        <Route path="/calendar" element={<CalendarPage />} />
+                        <Route path="/notes" element={<NotesPage />} />
+                        <Route path="/auth" element={<Navigate to="/" replace />} />
+                        <Route path="/auth/signup" element={<Navigate to="/" replace />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </main>
+                    
+                    {/* Lower Half - Terminal */}
+                    <div className="h-1/2 bg-black/30">
+                      <CyberTerminal onAddNote={handleAddNote} />
+                    </div>
+                  </div>
                 </div>
-                <CyberTerminal onAddNote={handleAddNote} />
               </div>
             </SidebarProvider>
           )}
