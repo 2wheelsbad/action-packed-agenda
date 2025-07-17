@@ -779,17 +779,15 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
            <span className="text-xs font-mono">CYBER_TERMINAL</span>
          </div>
         <div className="flex gap-1">
-          {!embedded && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="h-6 w-6 p-0 hover:bg-primary/20"
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            >
-              <Expand className="w-3 h-3" />
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="h-6 w-6 p-0 hover:bg-primary/20"
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            <Expand className="w-3 h-3" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"

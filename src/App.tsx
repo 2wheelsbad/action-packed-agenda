@@ -220,7 +220,7 @@ const App = () => {
               <Route path="*" element={<Navigate to="/auth" replace />} />
             </Routes>
           ) : (
-            <SidebarProvider>
+            <SidebarProvider defaultOpen={false}>
               <div className="min-h-screen flex w-full scanlines relative">
                 <AppSidebar />
                 <div className="flex-1 flex flex-col">
