@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,36 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit3, Trash2, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Note {
   id: string;
   title: string;
-  content: string;
+  content: string | null;
   tags: string[];
-  createdAt: Date;
-  updatedAt: Date;
+  created_at: string;
+  updated_at: string;
 }
 
 export function NotesSection() {
-  const [notes, setNotes] = useState<Note[]>([
-    {
-      id: "1",
-      title: "Project Ideas",
-      content: "Some great ideas for the next quarter:\n- Implement drag and drop\n- Add calendar integration\n- Create mobile app",
-      tags: ["work", "ideas"],
-      createdAt: new Date(Date.now() - 86400000),
-      updatedAt: new Date(Date.now() - 86400000),
-    },
-    {
-      id: "2",
-      title: "Meeting Notes",
-      content: "Team meeting today discussed:\n- Sprint planning\n- Code review process\n- New hiring requirements",
-      tags: ["meetings", "work"],
-      createdAt: new Date(Date.now() - 172800000),
-      updatedAt: new Date(Date.now() - 172800000),
-    },
-  ]);
-
+  const [notes, setNotes] = useState<Note[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -46,66 +29,140 @@ export function NotesSection() {
     content: "",
     tags: "",
   });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotes();
+  }, []);
+
+  const fetchNotes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setNotes(data || []);
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load notes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredNotes = notes.filter(note =>
     note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    note.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (note.content?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
     note.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const createNote = () => {
+  const createNote = async () => {
     if (newNote.title.trim() && newNote.content.trim()) {
-      const note: Note = {
-        id: Date.now().toString(),
-        title: newNote.title.trim(),
-        content: newNote.content.trim(),
-        tags: newNote.tags.split(",").map(tag => tag.trim()).filter(tag => tag),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setNotes([note, ...notes]);
-      setNewNote({ title: "", content: "", tags: "" });
-      setIsCreating(false);
-      toast({
-        title: "Note created",
-        description: `"${note.title}" has been created successfully.`,
-      });
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (!user.user) throw new Error('User not authenticated');
+
+        const { data, error } = await supabase
+          .from('notes')
+          .insert([{
+            title: newNote.title.trim(),
+            content: newNote.content.trim(),
+            tags: newNote.tags.split(",").map(tag => tag.trim()).filter(tag => tag),
+            user_id: user.user.id,
+          }])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setNotes([data, ...notes]);
+        setNewNote({ title: "", content: "", tags: "" });
+        setIsCreating(false);
+        toast({
+          title: "Note created",
+          description: `"${data.title}" has been created successfully.`,
+        });
+      } catch (error) {
+        console.error('Error creating note:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create note. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const updateNote = () => {
+  const updateNote = async () => {
     if (editingNote && newNote.title.trim() && newNote.content.trim()) {
-      const updatedNote: Note = {
-        ...editingNote,
-        title: newNote.title.trim(),
-        content: newNote.content.trim(),
-        tags: newNote.tags.split(",").map(tag => tag.trim()).filter(tag => tag),
-        updatedAt: new Date(),
-      };
-      setNotes(notes.map(note => note.id === editingNote.id ? updatedNote : note));
-      setEditingNote(null);
-      setNewNote({ title: "", content: "", tags: "" });
-      toast({
-        title: "Note updated",
-        description: `"${updatedNote.title}" has been updated successfully.`,
-      });
+      try {
+        const { data, error } = await supabase
+          .from('notes')
+          .update({
+            title: newNote.title.trim(),
+            content: newNote.content.trim(),
+            tags: newNote.tags.split(",").map(tag => tag.trim()).filter(tag => tag),
+          })
+          .eq('id', editingNote.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setNotes(notes.map(note => note.id === editingNote.id ? data : note));
+        setEditingNote(null);
+        setNewNote({ title: "", content: "", tags: "" });
+        toast({
+          title: "Note updated",
+          description: `"${data.title}" has been updated successfully.`,
+        });
+      } catch (error) {
+        console.error('Error updating note:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update note. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const deleteNote = (id: string) => {
+  const deleteNote = async (id: string) => {
     const note = notes.find(n => n.id === id);
-    setNotes(notes.filter(note => note.id !== id));
-    toast({
-      title: "Note deleted",
-      description: `"${note?.title}" has been deleted.`,
-    });
+    try {
+      const { error } = await supabase
+        .from('notes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setNotes(notes.filter(note => note.id !== id));
+      toast({
+        title: "Note deleted",
+        description: `"${note?.title}" has been deleted.`,
+      });
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete note. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const startEditing = (note: Note) => {
     setEditingNote(note);
     setNewNote({
       title: note.title,
-      content: note.content,
+      content: note.content || "",
       tags: note.tags.join(", "),
     });
     setIsCreating(false);
@@ -116,6 +173,32 @@ export function NotesSection() {
     setEditingNote(null);
     setNewNote({ title: "", content: "", tags: "" });
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Notes</h2>
+            <p className="text-muted-foreground">Capture your thoughts and ideas</p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="p-4">
+              <div className="space-y-3">
+                <div className="h-6 bg-muted rounded animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded animate-pulse" />
+                  <div className="h-4 bg-muted rounded animate-pulse w-2/3" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -220,7 +303,7 @@ export function NotesSection() {
               )}
 
               <div className="text-xs text-muted-foreground">
-                {format(note.updatedAt, "MMM d, yyyy 'at' h:mm a")}
+                {format(new Date(note.updated_at), "MMM d, yyyy 'at' h:mm a")}
               </div>
             </div>
           </Card>
