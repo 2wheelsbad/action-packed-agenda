@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Terminal, Minimize2, Maximize2, X } from "lucide-react";
+import { Terminal, Minimize2, Maximize2, X, Expand } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -27,6 +27,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(embedded);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [commands, setCommands] = useState<Command[]>([
     {
       input: "system.boot()",
@@ -753,12 +754,24 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
     );
   }
 
-  const containerClass = embedded 
-    ? "w-full h-full cyber-card scanlines flex flex-col"
-    : `fixed bottom-4 right-4 w-96 cyber-card scanlines z-50 ${isMinimized ? 'h-12' : 'h-96'} transition-all duration-300`;
+  const getContainerClass = () => {
+    if (embedded) {
+      return "w-full h-full cyber-card scanlines flex flex-col";
+    }
+    
+    if (isFullscreen) {
+      return "fixed inset-0 cyber-card scanlines z-50 flex flex-col";
+    }
+    
+    if (isMinimized) {
+      return "fixed bottom-0 left-0 right-0 cyber-card scanlines z-50 h-12 transition-all duration-300";
+    }
+    
+    return "fixed bottom-0 left-0 right-0 cyber-card scanlines z-50 h-[30vh] transition-all duration-300 flex flex-col";
+  };
 
   return (
-    <Card className={containerClass}>
+    <Card className={getContainerClass()}>
       {/* Terminal Header */}
       <div className="flex items-center justify-between p-2 border-b border-primary/30 bg-black/50">
          <div className="flex items-center gap-2">
@@ -766,11 +779,23 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
            <span className="text-xs font-mono">CYBER_TERMINAL</span>
          </div>
         <div className="flex gap-1">
+          {!embedded && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="h-6 w-6 p-0 hover:bg-primary/20"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              <Expand className="w-3 h-3" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsMinimized(!isMinimized)}
             className="h-6 w-6 p-0 hover:bg-primary/20"
+            title={isMinimized ? "Expand" : "Minimize"}
           >
             {isMinimized ? <Maximize2 className="w-3 h-3" /> : <Minimize2 className="w-3 h-3" />}
           </Button>
@@ -780,6 +805,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
                size="sm"
                onClick={() => setIsOpen(false)}
                className="h-6 w-6 p-0 hover:bg-destructive/20"
+               title="Close terminal"
              >
                <X className="w-3 h-3" />
              </Button>
@@ -789,11 +815,11 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
 
       {!isMinimized && (
         <>
-          {/* Terminal Output */}
-           <div
-             ref={terminalRef}
-             className={`flex-1 p-3 overflow-y-auto font-mono text-xs bg-black/80 ${embedded ? '' : 'max-h-64'}`}
-           >
+           {/* Terminal Output */}
+            <div
+              ref={terminalRef}
+              className="flex-1 p-3 overflow-y-auto font-mono text-xs bg-black/80"
+            >
             {commands.map((command, index) => (
               <div key={index} className="mb-2">
                 <div className="flex items-center gap-2">
