@@ -167,7 +167,7 @@
   /* Terminal cursor animation */
   .terminal-cursor::after {
     content: '█';
-    animation: blink 1s infinite;
+    animation: blink .5s infinite;
     color: rgb(var(--primary));
   }
   
