@@ -724,10 +724,24 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
             
             if (validThemes.includes(theme)) {
               setCurrentTheme(theme);
+              
+              // Debug: Add console logs to see what's happening
+              console.log('Setting theme to:', theme);
+              console.log('Document classes before:', document.documentElement.className);
+              
+              // Force immediate application
+              const documentElement = document.documentElement;
+              documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black');
+              documentElement.classList.add(`theme-${theme}`, 'dark');
+              
+              console.log('Document classes after:', document.documentElement.className);
+              console.log('Primary CSS variable:', getComputedStyle(document.documentElement).getPropertyValue('--primary'));
+              
               output = [
                 `[✓] Theme changed to ${theme.toUpperCase()}`,
                 `Color scheme updated successfully`,
-                `Theme persisted to local storage`
+                `Theme persisted to local storage`,
+                `Debug: Classes applied - ${document.documentElement.className}`
               ];
               type = 'success';
               toast({
