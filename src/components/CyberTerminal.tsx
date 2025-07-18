@@ -64,9 +64,13 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
     const savedTheme = localStorage.getItem('cyberTerminalTheme');
     if (savedTheme) {
       setCurrentTheme(savedTheme);
-      document.documentElement.className = `theme-${savedTheme} dark`;
+      // Apply theme classes properly
+      const documentElement = document.documentElement;
+      documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black');
+      documentElement.classList.add(`theme-${savedTheme}`, 'dark');
     } else {
-      document.documentElement.className = 'theme-purple dark';
+      setCurrentTheme('purple');
+      document.documentElement.classList.add('theme-purple', 'dark');
     }
   }, []);
 
@@ -82,7 +86,11 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
   // Save and apply theme when it changes
   useEffect(() => {
     localStorage.setItem('cyberTerminalTheme', currentTheme);
-    document.documentElement.className = `theme-${currentTheme} dark`;
+    
+    // Remove existing theme classes and add new one
+    const documentElement = document.documentElement;
+    documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black');
+    documentElement.classList.add(`theme-${currentTheme}`, 'dark');
   }, [currentTheme]);
 
   useEffect(() => {
