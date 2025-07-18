@@ -4,10 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Play, Pause, Clock, Trash2, Edit3 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Play, Pause, Clock, Trash2, Edit3, CalendarIcon, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface TimeEntry {
   id: string;
@@ -27,18 +30,26 @@ export function TimeLog() {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editActivity, setEditActivity] = useState("");
   const [editDuration, setEditDuration] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   // Fetch time logs from database
   useEffect(() => {
     fetchTimeEntries();
-  }, []);
+  }, [selectedDate]);
 
   const fetchTimeEntries = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('time_logs')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+
+      // Filter by selected date if specified
+      if (selectedDate) {
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        query = query.eq('date', dateStr);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         toast({
@@ -247,13 +258,11 @@ export function TimeLog() {
   // Calculate total time
   const totalTime = entries.reduce((sum, entry) => sum + entry.duration, 0);
 
-  // Get today's entries
-  const todayEntries = entries.filter(entry => {
-    const today = new Date().toISOString().split('T')[0];
-    return entry.date === today;
-  });
-
-  const todayTotal = todayEntries.reduce((sum, entry) => sum + entry.duration, 0);
+  // Get filtered date label
+  const getDateLabel = () => {
+    if (!selectedDate) return "All Time";
+    return format(selectedDate, 'MMM d, yyyy');
+  };
 
   if (loading) {
     return (
@@ -271,11 +280,50 @@ export function TimeLog() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Clock className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Time Log</h1>
-          <p className="text-muted-foreground">Track your time and stay productive</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Clock className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Time Log</h1>
+            <p className="text-muted-foreground">Track your time and stay productive</p>
+          </div>
+        </div>
+        
+        {/* Date Filter */}
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-[240px] justify-start text-left font-normal",
+                  !selectedDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate ? format(selectedDate, "PPP") : <span>Filter by date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          {selectedDate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedDate(undefined)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -315,8 +363,8 @@ export function TimeLog() {
                 <Clock className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Today's Total</p>
-                <p className="text-2xl font-bold">{formatDuration(todayTotal)}</p>
+                <p className="text-sm text-muted-foreground">{getDateLabel()}</p>
+                <p className="text-2xl font-bold">{formatDuration(totalTime)}</p>
               </div>
             </div>
           </CardContent>
@@ -329,8 +377,8 @@ export function TimeLog() {
                 <Clock className="w-6 h-6 text-secondary-foreground" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">All Time Total</p>
-                <p className="text-2xl font-bold">{formatDuration(totalTime)}</p>
+                <p className="text-sm text-muted-foreground">Entries</p>
+                <p className="text-2xl font-bold">{entries.length}</p>
               </div>
             </div>
           </CardContent>
