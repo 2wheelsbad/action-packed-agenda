@@ -66,11 +66,12 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
       setCurrentTheme(savedTheme);
       // Apply theme classes properly
       const documentElement = document.documentElement;
-      documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black');
-      documentElement.classList.add(`theme-${savedTheme}`, 'dark');
+      documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black', 'dark');
+      documentElement.classList.add(`theme-${savedTheme}`);
     } else {
       setCurrentTheme('purple');
-      document.documentElement.classList.add('theme-purple', 'dark');
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('theme-purple');
     }
   }, []);
 
@@ -89,8 +90,12 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
     
     // Remove existing theme classes and add new one
     const documentElement = document.documentElement;
-    documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black');
-    documentElement.classList.add(`theme-${currentTheme}`, 'dark');
+    documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black', 'dark');
+    
+    // Force a small delay to ensure class removal is processed
+    setTimeout(() => {
+      documentElement.classList.add(`theme-${currentTheme}`);
+    }, 10);
   }, [currentTheme]);
 
   useEffect(() => {
@@ -725,23 +730,21 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
             if (validThemes.includes(theme)) {
               setCurrentTheme(theme);
               
-              // Debug: Add console logs to see what's happening
-              console.log('Setting theme to:', theme);
-              console.log('Document classes before:', document.documentElement.className);
-              
-              // Force immediate application
+              // Force immediate application and style recalculation
               const documentElement = document.documentElement;
-              documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black');
-              documentElement.classList.add(`theme-${theme}`, 'dark');
+               documentElement.classList.remove('theme-green', 'theme-purple', 'theme-red', 'theme-black', 'dark');
+               documentElement.classList.add(`theme-${theme}`);
               
-              console.log('Document classes after:', document.documentElement.className);
-              console.log('Primary CSS variable:', getComputedStyle(document.documentElement).getPropertyValue('--primary'));
+              // Force browser to recalculate styles
+              documentElement.style.setProperty('--force-recalc', Math.random().toString());
+              setTimeout(() => {
+                documentElement.style.removeProperty('--force-recalc');
+              }, 0);
               
               output = [
                 `[✓] Theme changed to ${theme.toUpperCase()}`,
                 `Color scheme updated successfully`,
-                `Theme persisted to local storage`,
-                `Debug: Classes applied - ${document.documentElement.className}`
+                `Theme persisted to local storage`
               ];
               type = 'success';
               toast({
