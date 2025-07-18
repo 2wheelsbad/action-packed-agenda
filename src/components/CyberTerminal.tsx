@@ -47,6 +47,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
   const [activeTimeLog, setActiveTimeLog] = useState<{activity: string, startTime: number} | null>(null);
+  const [currentTheme, setCurrentTheme] = useState('purple');
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +59,17 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
     }
   }, []);
 
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('cyberTerminalTheme');
+    if (savedTheme) {
+      setCurrentTheme(savedTheme);
+      document.documentElement.className = `theme-${savedTheme} dark`;
+    } else {
+      document.documentElement.className = 'theme-purple dark';
+    }
+  }, []);
+
   // Save active time log to localStorage when it changes
   useEffect(() => {
     if (activeTimeLog) {
@@ -66,6 +78,12 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
       localStorage.removeItem('activeTimeLog');
     }
   }, [activeTimeLog]);
+
+  // Save and apply theme when it changes
+  useEffect(() => {
+    localStorage.setItem('cyberTerminalTheme', currentTheme);
+    document.documentElement.className = `theme-${currentTheme} dark`;
+  }, [currentTheme]);
 
   useEffect(() => {
     if ((isOpen || embedded) && !isMinimized && inputRef.current) {
@@ -213,6 +231,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
               "",
               "🔧 SYSTEM:",
               "├── sys.status - System information",
+              "├── theme.change -[green/purple/red/black]",
               "├── history - Command history",
               "├── clear - Clear terminal",
               "└── help <command> - Detailed help",
@@ -677,6 +696,45 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
           setCommands([]);
           setCurrentInput("");
           return;
+
+        case 'theme.change':
+          if (positional.length < 1) {
+            output = [
+              "ERROR: Theme required. Usage: theme.change -[green/purple/red/black]",
+              "",
+              "Available themes:",
+              "├── green - Matrix-style green theme",
+              "├── purple - Cyberpunk purple theme (default)",
+              "├── red - Alert red theme",
+              "└── black - Monochrome black/white theme"
+            ];
+            type = 'error';
+          } else {
+            const themeArg = positional[0];
+            const theme = themeArg.startsWith('-') ? themeArg.substring(1) : themeArg;
+            const validThemes = ['green', 'purple', 'red', 'black'];
+            
+            if (validThemes.includes(theme)) {
+              setCurrentTheme(theme);
+              output = [
+                `[✓] Theme changed to ${theme.toUpperCase()}`,
+                `Color scheme updated successfully`,
+                `Theme persisted to local storage`
+              ];
+              type = 'success';
+              toast({
+                title: "Theme Changed",
+                description: `Switched to ${theme} theme`,
+              });
+            } else {
+              output = [
+                `ERROR: Invalid theme '${theme}'`,
+                "Available themes: green, purple, red, black"
+              ];
+              type = 'error';
+            }
+          }
+          break;
 
         case 'hack.time':
           output = [
