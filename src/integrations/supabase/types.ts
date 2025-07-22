@@ -137,6 +137,7 @@ export type Database = {
       todos: {
         Row: {
           completed: boolean
+          completed_at: string | null
           created_at: string
           id: string
           priority: string
@@ -146,6 +147,7 @@ export type Database = {
         }
         Insert: {
           completed?: boolean
+          completed_at?: string | null
           created_at?: string
           id?: string
           priority?: string
@@ -155,6 +157,7 @@ export type Database = {
         }
         Update: {
           completed?: boolean
+          completed_at?: string | null
           created_at?: string
           id?: string
           priority?: string

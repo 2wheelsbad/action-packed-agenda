@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, GripVertical, Trash2, Edit3, CheckSquare } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit3, CheckSquare, Filter, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -36,6 +36,7 @@ interface Todo {
   created_at: string;
   updated_at: string;
   user_id: string;
+  completed_at?: string;
 }
 
 interface SortableTodoItemProps {
@@ -120,9 +121,16 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit }: SortableTodoItem
               autoFocus
             />
           ) : (
-            <p className={`text-sm ${todo.completed ? "line-through" : ""}`}>
-              {todo.text}
-            </p>
+            <div>
+              <p className={`text-sm ${todo.completed ? "line-through" : ""}`}>
+                {todo.text}
+              </p>
+              {todo.completed && todo.completed_at && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Completed: {new Date(todo.completed_at).toLocaleDateString()}
+                </p>
+              )}
+            </div>
           )}
         </div>
 
@@ -158,6 +166,7 @@ export function TodoList() {
   const [newTodo, setNewTodo] = useState("");
   const [newPriority, setNewPriority] = useState<"low" | "medium" | "high">("medium");
   const [loading, setLoading] = useState(true);
+  const [hideCompleted, setHideCompleted] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -269,10 +278,16 @@ export function TodoList() {
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
 
+    const newCompleted = !todo.completed;
+    const updateData = {
+      completed: newCompleted,
+      completed_at: newCompleted ? new Date().toISOString() : null
+    };
+
     try {
       const { error } = await supabase
         .from('todos')
-        .update({ completed: !todo.completed })
+        .update(updateData)
         .eq('id', id);
 
       if (error) {
@@ -283,7 +298,7 @@ export function TodoList() {
         });
       } else {
         setTodos(todos.map(todo => 
-          todo.id === id ? { ...todo, completed: !todo.completed } : todo
+          todo.id === id ? { ...todo, completed: newCompleted, completed_at: updateData.completed_at } : todo
         ));
       }
     } catch (error) {
@@ -361,6 +376,7 @@ export function TodoList() {
     }
   };
 
+  const filteredTodos = hideCompleted ? todos.filter(todo => !todo.completed) : todos;
   const completedCount = todos.filter(todo => todo.completed).length;
   const totalCount = todos.length;
 
@@ -386,11 +402,22 @@ export function TodoList() {
             {completedCount} of {totalCount} tasks completed
           </p>
         </div>
-        <div className="w-48 bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-primary h-2 rounded-full transition-all duration-300"
-            style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
-          />
+        <div className="flex items-center gap-4">
+          <Button
+            variant={hideCompleted ? "default" : "outline"}
+            size="sm"
+            onClick={() => setHideCompleted(!hideCompleted)}
+            className="flex items-center gap-2"
+          >
+            {hideCompleted ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {hideCompleted ? "Show Completed" : "Hide Completed"}
+          </Button>
+          <div className="w-48 bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
+            />
+          </div>
         </div>
       </div>
 
@@ -424,9 +451,9 @@ export function TodoList() {
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={todos.map(todo => todo.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={filteredTodos.map(todo => todo.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
-            {todos.map((todo) => (
+            {filteredTodos.map((todo) => (
               <SortableTodoItem
                 key={todo.id}
                 todo={todo}
@@ -438,6 +465,14 @@ export function TodoList() {
           </div>
         </SortableContext>
       </DndContext>
+
+      {filteredTodos.length === 0 && todos.length > 0 && (
+        <Card className="p-8 text-center">
+          <Filter className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No tasks match your filter</h3>
+          <p className="text-muted-foreground">Try adjusting your filter settings.</p>
+        </Card>
+      )}
 
       {todos.length === 0 && (
         <Card className="p-8 text-center">
