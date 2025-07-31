@@ -1,73 +1,159 @@
-# Welcome to your Lovable project
+# Action Packed Agenda
 
-## Project info
+A cyberpunk-themed desktop productivity application with terminal-style interface for managing todos, time tracking, calendar events, and notes.
 
-**URL**: https://lovable.dev/projects/11510747-4a1a-4dd9-a0e1-8e3edf248e7d
+## Features
 
-## How can I edit this code?
+- **Task Management** - Create, edit, and organize todos with priority levels
+- **Time Tracking** - Log activities and track time spent on different tasks
+- **Calendar Events** - Schedule and manage calendar events and reminders
+- **Note Taking** - Rich text notes with tagging system
+- **Terminal Interface** - Interactive command-line interface for data entry
+- **Cyberpunk Theme** - Dark theme with neon glow effects and terminal aesthetics
+- **Local Storage** - All data stored locally using SQLite (no authentication required)
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend**: React 18 with TypeScript
+- **Build Tool**: Vite with SWC
+- **Desktop Framework**: Tauri (Rust-based)
+- **Database**: SQLite for local storage
+- **UI Components**: shadcn/ui with Tailwind CSS
+- **Routing**: React Router
+- **Data Fetching**: React Query
+- **Theming**: next-themes for dark/light mode
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/11510747-4a1a-4dd9-a0e1-8e3edf248e7d) and start prompting.
+## Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+Before running this application locally, make sure you have the following installed:
 
-**Use your preferred IDE**
+- **Node.js** (v18 or higher) - [Install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **npm** (comes with Node.js)
+- **Rust** (for Tauri desktop app) - [Install Rust](https://rustup.rs/)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+For the desktop application, you'll also need:
+- **System dependencies** for Tauri - see [Tauri Prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Installation & Setup
 
-Follow these steps:
+### 1. Clone the Repository
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+cd action-packed-agenda
 ```
 
-**Edit a file directly in GitHub**
+### 2. Install Dependencies
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm install
+```
 
-**Use GitHub Codespaces**
+### 3. Run the Application
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+#### Web Version (Development)
+```bash
+npm run dev
+```
+This starts the web development server on `http://localhost:8080`
 
-## What technologies are used for this project?
+#### Desktop Application (Development)
+```bash
+npm run tauri:dev
+```
+This builds and runs the Tauri desktop application with hot reload
 
-This project is built with:
+#### Preview Production Build
+```bash
+npm run build
+npm run preview
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Available Scripts
 
-## How can I deploy this project?
+### Development
+- `npm run dev` - Start web development server on port 8080
+- `npm run tauri:dev` - Start Tauri desktop application in development mode
 
-Simply open [Lovable](https://lovable.dev/projects/11510747-4a1a-4dd9-a0e1-8e3edf248e7d) and click on Share -> Publish.
+### Production
+- `npm run build` - Build web version for production
+- `npm run tauri:build` - Build desktop application for production
 
-## Can I connect a custom domain to my Lovable project?
+### Code Quality
+- `npm run lint` - Run ESLint
+- `npm run preview` - Preview production build
 
-Yes, you can!
+## Project Structure
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```
+src/
+├── components/          # React components
+│   ├── ui/             # shadcn/ui components
+│   └── CyberTerminal.tsx # Interactive terminal interface
+├── pages/              # Route components
+├── lib/                # Utilities and database
+│   └── database.ts     # SQLite database operations
+├── hooks/              # Custom React hooks
+└── integrations/       # External service integrations
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+src-tauri/              # Tauri backend (Rust)
+```
+
+## Database
+
+The application uses SQLite for local data storage with four main tables:
+- `todos` - Task items with priority levels and completion status
+- `time_logs` - Activity tracking with duration in minutes
+- `calendar_events` - Date-based events and reminders
+- `notes` - Rich text notes with tags
+
+The database file is created automatically when you first run the application.
+
+## Key Features
+
+### Terminal Interface
+- Interactive command-line interface for quick data entry
+- Commands for creating todos, time logs, calendar events, and notes
+- System status and help commands
+- Command history and autocomplete
+
+### Navigation
+- `/` - Dashboard (overview)
+- `/todos` - Task management
+- `/timelog` - Time tracking
+- `/calendar` - Calendar events
+- `/notes` - Note taking
+
+## Development Notes
+
+- Path alias `@/` maps to `src/`
+- Uses SWC for fast React compilation
+- ESLint configured for React and TypeScript
+- SQLite database operations through `src/lib/database.ts`
+- Single-user application (no authentication required)
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Tauri build fails**: Make sure you have all system dependencies installed for your platform
+2. **Port already in use**: The web dev server uses port 8080 by default
+3. **Database errors**: The SQLite database is created automatically on first run
+
+### System Requirements
+
+- **Windows**: WebView2, Visual Studio C++ Build Tools
+- **macOS**: Xcode Command Line Tools
+- **Linux**: webkit2gtk, build essentials
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run `npm run lint` to check code quality
+5. Submit a pull request
+
+## License
+
+This project is built with Lovable and uses various open-source technologies. See individual package licenses for more details.

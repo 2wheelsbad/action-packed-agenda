@@ -673,7 +673,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
           break;
 
         // System Commands
-        case 'sys.status':
+        case 'sys.status': {
           const currentPage = getCurrentPageName();
           output = [
             "SYSTEM STATUS:",
@@ -689,6 +689,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
           ];
           type = 'success';
           break;
+        }
 
         case 'history':
           output = [

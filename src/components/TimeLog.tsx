@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,9 +35,9 @@ export function TimeLog() {
   // Fetch time logs from database
   useEffect(() => {
     fetchTimeEntries();
-  }, [selectedDate]);
+  }, [fetchTimeEntries]);
 
-  const fetchTimeEntries = async () => {
+  const fetchTimeEntries = useCallback(async () => {
     try {
       let query = supabase
         .from('time_logs')
@@ -70,7 +70,7 @@ export function TimeLog() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate]);
 
   // Format duration for display
   const formatDuration = (minutes: number): string => {

@@ -61,11 +61,11 @@ export default function TerminalAuthPage() {
       
       if (error) throw error;
       addLine('output', 'Redirecting to Google...');
-    } catch (error: any) {
-      addLine('error', `Authentication failed: ${error.message}`);
+    } catch (error: unknown) {
+      addLine('error', `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       toast({
         title: "Authentication Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: "destructive"
       });
     } finally {
@@ -85,11 +85,11 @@ export default function TerminalAuthPage() {
       
       if (error) throw error;
       addLine('output', 'Login successful! Redirecting...');
-    } catch (error: any) {
-      addLine('error', `Login failed: ${error.message}`);
+    } catch (error: unknown) {
+      addLine('error', `Login failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       toast({
         title: "Authentication Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: "destructive"
       });
     } finally {

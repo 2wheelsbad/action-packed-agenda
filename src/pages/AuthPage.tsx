@@ -27,10 +27,10 @@ export default function AuthPage() {
       });
       
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Authentication Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: "destructive"
       });
     } finally {
@@ -56,10 +56,10 @@ export default function AuthPage() {
         title: "Account created!",
         description: "Please check your email to verify your account."
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Authentication Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: "destructive"
       });
     } finally {
