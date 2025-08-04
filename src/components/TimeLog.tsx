@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Play, Pause, Clock, Trash2, Edit3, CalendarIcon, X } from "lucide-react";
+import { Play, Pause, Clock, Trash2, Edit3, CalendarIcon, X, Calendar as CalendarViewIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface TimeEntry {
@@ -30,12 +30,13 @@ export function TimeLog() {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editActivity, setEditActivity] = useState("");
   const [editDuration, setEditDuration] = useState("");
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date()); // Default to today
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
 
   // Fetch time logs from database
   useEffect(() => {
     fetchTimeEntries();
-  }, [selectedDate]);
+  }, [selectedDate, viewMode]);
 
   const fetchTimeEntries = async () => {
     try {
@@ -43,10 +44,19 @@ export function TimeLog() {
         .from('time_logs')
         .select('*');
 
-      // Filter by selected date if specified
+      // Filter by selected date or week if specified
       if (selectedDate) {
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        query = query.eq('date', dateStr);
+        if (viewMode === 'day') {
+          const dateStr = selectedDate.toISOString().split('T')[0];
+          query = query.eq('date', dateStr);
+        } else {
+          // Week view - get all entries for the week
+          const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Start on Monday
+          const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+          const startStr = weekStart.toISOString().split('T')[0];
+          const endStr = weekEnd.toISOString().split('T')[0];
+          query = query.gte('date', startStr).lte('date', endStr);
+        }
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -261,7 +271,30 @@ export function TimeLog() {
   // Get filtered date label
   const getDateLabel = () => {
     if (!selectedDate) return "All Time";
+    if (viewMode === 'week') {
+      const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+      return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
+    }
     return format(selectedDate, 'MMM d, yyyy');
+  };
+
+  // Group entries by date for week view
+  const getGroupedEntries = () => {
+    if (viewMode === 'day') return { [selectedDate?.toISOString().split('T')[0] || '']: entries };
+    
+    const weekStart = startOfWeek(selectedDate || new Date(), { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(selectedDate || new Date(), { weekStartsOn: 1 });
+    const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+    
+    const grouped: Record<string, TimeEntry[]> = {};
+    
+    weekDays.forEach(day => {
+      const dayStr = day.toISOString().split('T')[0];
+      grouped[dayStr] = entries.filter(entry => entry.date === dayStr);
+    });
+    
+    return grouped;
   };
 
   if (loading) {
@@ -289,8 +322,29 @@ export function TimeLog() {
           </div>
         </div>
         
-        {/* Date Filter */}
+        {/* View Controls */}
         <div className="flex items-center gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex rounded-lg border">
+            <Button
+              variant={viewMode === 'day' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('day')}
+              className="rounded-r-none"
+            >
+              Day
+            </Button>
+            <Button
+              variant={viewMode === 'week' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('week')}
+              className="rounded-l-none"
+            >
+              Week
+            </Button>
+          </div>
+
+          {/* Date Filter */}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -314,16 +368,15 @@ export function TimeLog() {
               />
             </PopoverContent>
           </Popover>
-          {selectedDate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedDate(undefined)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedDate(new Date())}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            Today
+          </Button>
         </div>
       </div>
 
@@ -395,6 +448,94 @@ export function TimeLog() {
             <div className="text-center py-8 text-muted-foreground">
               <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No time entries yet. Add your first time entry!</p>
+            </div>
+          ) : viewMode === 'week' ? (
+            <div className="space-y-6">
+              {Object.entries(getGroupedEntries()).map(([date, dayEntries]) => {
+                const dayDate = new Date(date + 'T00:00:00');
+                const dayTotal = dayEntries.reduce((sum, entry) => sum + entry.duration, 0);
+                
+                return (
+                  <div key={date} className="space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b">
+                      <h3 className="font-semibold text-lg">
+                        {format(dayDate, 'EEEE, MMM d')}
+                      </h3>
+                      <div className="text-sm text-muted-foreground">
+                        {dayEntries.length} entries • {formatDuration(dayTotal)}
+                      </div>
+                    </div>
+                    
+                    {dayEntries.length === 0 ? (
+                      <p className="text-muted-foreground text-sm italic">No entries for this day</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {dayEntries.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                          >
+                            <div className="flex-1">
+                              {editingEntry?.id === entry.id ? (
+                                <div className="space-y-2">
+                                  <Input
+                                    value={editActivity}
+                                    onChange={(e) => setEditActivity(e.target.value)}
+                                    className="font-medium"
+                                  />
+                                  <div className="flex gap-2">
+                                    <Input
+                                      value={editDuration}
+                                      onChange={(e) => setEditDuration(e.target.value)}
+                                      type="number"
+                                      min="1"
+                                      className="w-32"
+                                    />
+                                    <Button size="sm" onClick={updateTimeEntry}>
+                                      Save
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={cancelEditing}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <h4 className="font-medium">{entry.activity}</h4>
+                                  <div className="text-sm text-muted-foreground">
+                                    Duration: {formatDuration(entry.duration)}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {editingEntry?.id !== entry.id && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => startEditing(entry)}
+                                  className="text-primary hover:text-primary hover:bg-primary/10"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteEntry(entry.id)}
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-3">
