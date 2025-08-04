@@ -166,7 +166,7 @@ export function TodoList() {
   const [newTodo, setNewTodo] = useState("");
   const [newPriority, setNewPriority] = useState<"low" | "medium" | "high">("medium");
   const [loading, setLoading] = useState(true);
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [hideCompleted, setHideCompleted] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
