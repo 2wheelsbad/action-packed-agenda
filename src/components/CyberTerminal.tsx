@@ -840,7 +840,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
   const getContainerClass = () => {
     // Fullscreen should override embedded/minimized states
     if (isFullscreen) {
-      return "fixed inset-0 cyber-card scanlines z-[9999] flex flex-col";
+      return "fixed inset-0 cyber-card scanlines z-[9999] flex flex-col bg-black";
     }
 
     if (embedded) {
@@ -857,7 +857,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
   return (
     <Card className={getContainerClass()}>
       {/* Terminal Header */}
-      <div className="flex items-center justify-between p-2 border-b border-primary/30 bg-black/50">
+      <div className={`flex items-center justify-between p-2 border-b border-primary/30 ${isFullscreen ? 'bg-black' : 'bg-black/50'}`}>
          <div className="flex items-center gap-2">
            <Terminal className="w-4 h-4 text-primary" />
            <span className="text-xs font-mono">CYBER_TERMINAL</span>
@@ -910,7 +910,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
            {/* Terminal Output */}
             <div
               ref={terminalRef}
-              className="flex-1 p-3 pb-16 overflow-y-auto font-mono text-xs bg-black/80"
+              className={`flex-1 p-3 pb-16 overflow-y-auto font-mono text-xs ${isFullscreen ? 'bg-black' : 'bg-black/80'}`}
             >
             {commands.map((command, index) => (
               <div key={index} className="mb-2">
@@ -938,7 +938,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
 
       {/* Sticky Terminal Input - Always visible */}
       {!isMinimized && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 bg-black/90 backdrop-blur-sm border-t border-primary/30 z-[60]">
+        <div className={`fixed bottom-0 left-0 right-0 p-3 ${isFullscreen ? 'bg-black' : 'bg-black/90'} backdrop-blur-sm border-t border-primary/30 z-[60]`}>
            <div className="flex items-center gap-2 font-mono text-xs">
              <span className="text-accent">root@cyber:~$</span>
             <input
