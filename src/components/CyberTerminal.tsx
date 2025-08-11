@@ -838,12 +838,13 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
   }
 
   const getContainerClass = () => {
-    if (embedded) {
-      return "w-full h-full cyber-card scanlines flex flex-col";
-    }
-    
+    // Fullscreen should override embedded/minimized states
     if (isFullscreen) {
       return "fixed inset-0 cyber-card scanlines z-[9999] flex flex-col";
+    }
+
+    if (embedded) {
+      return "w-full h-full cyber-card scanlines flex flex-col";
     }
     
     if (isMinimized) {
