@@ -136,28 +136,43 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange }
           )}
         </div>
 
-<DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Badge
-      role="button"
-      tabIndex={0}
-      className={`text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ${getPriorityColor(todo.priority)}`}
-    >
-      {todo.priority}
-    </Badge>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent side="bottom" align="start" className="z-[10000] bg-background border shadow-md">
-    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "low")}>
-      Low
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "medium")}>
-      Medium
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "high")}>
-      High
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button 
+              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer ${getPriorityColor(todo.priority)}`}
+            >
+              {todo.priority}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent 
+            side="bottom" 
+            align="start" 
+            className="z-[10000] bg-popover border border-border shadow-lg"
+            sideOffset={5}
+          >
+            <DropdownMenuItem 
+              onClick={() => onPriorityChange(todo.id, "low")}
+              className="cursor-pointer"
+            >
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+              Low
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onPriorityChange(todo.id, "medium")}
+              className="cursor-pointer"
+            >
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
+              Medium
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => onPriorityChange(todo.id, "high")}
+              className="cursor-pointer"
+            >
+              <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+              High
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <div className="flex gap-1">
           <Button
