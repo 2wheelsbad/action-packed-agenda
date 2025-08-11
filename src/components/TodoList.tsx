@@ -138,14 +138,24 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange }
 
 <DropdownMenu>
   <DropdownMenuTrigger asChild>
-    <Badge className={`text-xs cursor-pointer ${getPriorityColor(todo.priority)}`}>
+    <Badge
+      role="button"
+      tabIndex={0}
+      className={`text-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring ${getPriorityColor(todo.priority)}`}
+    >
       {todo.priority}
     </Badge>
   </DropdownMenuTrigger>
-  <DropdownMenuContent className="z-[1000] bg-background border shadow-md">
-    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "low")}>Low</DropdownMenuItem>
-    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "medium")}>Medium</DropdownMenuItem>
-    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "high")}>High</DropdownMenuItem>
+  <DropdownMenuContent side="bottom" align="start" className="z-[10000] bg-background border shadow-md">
+    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "low")}>
+      Low
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "medium")}>
+      Medium
+    </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "high")}>
+      High
+    </DropdownMenuItem>
   </DropdownMenuContent>
 </DropdownMenu>
 
