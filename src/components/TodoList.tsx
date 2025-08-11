@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, GripVertical, Trash2, Edit3, CheckSquare, Filter, Eye, EyeOff } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -44,9 +45,10 @@ interface SortableTodoItemProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, text: string) => void;
+  onPriorityChange: (id: string, priority: "low" | "medium" | "high") => void;
 }
 
-function SortableTodoItem({ todo, onToggle, onDelete, onEdit }: SortableTodoItemProps) {
+function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange }: SortableTodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
 
@@ -134,9 +136,18 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit }: SortableTodoItem
           )}
         </div>
 
-        <Badge className={`text-xs ${getPriorityColor(todo.priority)}`}>
-          {todo.priority}
-        </Badge>
+<DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Badge className={`text-xs cursor-pointer ${getPriorityColor(todo.priority)}`}>
+      {todo.priority}
+    </Badge>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent className="z-[1000] bg-background border shadow-md">
+    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "low")}>Low</DropdownMenuItem>
+    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "medium")}>Medium</DropdownMenuItem>
+    <DropdownMenuItem onClick={() => onPriorityChange(todo.id, "high")}>High</DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
 
         <div className="flex gap-1">
           <Button
@@ -374,11 +385,38 @@ export function TodoList() {
         variant: "destructive"
       });
     }
-  };
+};
 
-  const filteredTodos = hideCompleted ? todos.filter(todo => !todo.completed) : todos;
-  const completedCount = todos.filter(todo => todo.completed).length;
-  const totalCount = todos.length;
+const updatePriority = async (id: string, priority: "low" | "medium" | "high") => {
+  try {
+    const { error } = await supabase
+      .from('todos')
+      .update({ priority })
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error updating priority",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setTodos(todos.map(t => t.id === id ? { ...t, priority } : t));
+      toast({ title: "Priority updated", description: `Set to ${priority}.` });
+    }
+  } catch (error) {
+    console.error('Error updating priority:', error);
+    toast({
+      title: "Error updating priority",
+      description: "An unexpected error occurred",
+      variant: "destructive",
+    });
+  }
+};
+
+const filteredTodos = hideCompleted ? todos.filter(todo => !todo.completed) : todos;
+const completedCount = todos.filter(todo => todo.completed).length;
+const totalCount = todos.length;
 
   if (loading) {
     return (
@@ -460,6 +498,7 @@ export function TodoList() {
                 onToggle={toggleTodo}
                 onDelete={deleteTodo}
                 onEdit={editTodo}
+                onPriorityChange={updatePriority}
               />
             ))}
           </div>
