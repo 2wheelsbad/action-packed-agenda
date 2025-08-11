@@ -843,7 +843,7 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
     }
     
     if (isFullscreen) {
-      return "fixed inset-0 cyber-card scanlines z-50 flex flex-col";
+      return "fixed inset-0 cyber-card scanlines z-[9999] flex flex-col";
     }
     
     if (isMinimized) {
@@ -865,7 +865,11 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsFullscreen(!isFullscreen)}
+             onClick={() => {
+               setIsOpen(true);
+               setIsMinimized(false);
+               setIsFullscreen((prev) => !prev);
+             }}
             className="h-6 w-6 p-0 hover:bg-primary/20"
             title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
@@ -874,7 +878,13 @@ export function CyberTerminal({ onAddTodo, onAddTimeLog, onAddCalendarEvent, onA
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsMinimized(!isMinimized)}
+             onClick={() => {
+               if (isFullscreen) {
+                 setIsFullscreen(false);
+               } else {
+                 setIsMinimized(!isMinimized);
+               }
+             }}
             className="h-6 w-6 p-0 hover:bg-primary/20"
             title={isMinimized ? "Expand" : "Minimize"}
           >
