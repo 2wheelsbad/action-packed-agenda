@@ -33,11 +33,21 @@ interface Todo {
   id: string;
   text: string;
   completed: boolean;
-  priority: "low" | "medium" | "high";
+  priority: string; // Changed to string to support custom priorities
   created_at: string;
   updated_at: string;
   user_id: string;
   completed_at?: string;
+}
+
+interface CustomPriority {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface SortableTodoItemProps {
@@ -45,10 +55,11 @@ interface SortableTodoItemProps {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, text: string) => void;
-  onPriorityChange: (id: string, priority: "low" | "medium" | "high") => void;
+  onPriorityChange: (id: string, priority: string) => void;
+  priorities: CustomPriority[];
 }
 
-function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange }: SortableTodoItemProps) {
+function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange, priorities }: SortableTodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
 
@@ -76,13 +87,25 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange }
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high": return "bg-red-100 text-red-800 border-red-200";
-      case "medium": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "low": return "bg-green-100 text-green-800 border-green-200";
-      default: return "bg-gray-100 text-gray-800 border-gray-200";
+  const getPriorityColor = (priorityName: string) => {
+    const priority = priorities.find(p => p.name === priorityName);
+    if (priority) {
+      return `border-2 text-white`; // We'll use inline styles for color
     }
+    // Fallback for unknown priorities
+    return "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
+  const getPriorityStyle = (priorityName: string) => {
+    const priority = priorities.find(p => p.name === priorityName);
+    if (priority) {
+      return {
+        backgroundColor: priority.color + '20',
+        borderColor: priority.color,
+        color: priority.color
+      };
+    }
+    return {};
   };
 
   return (
@@ -139,7 +162,8 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange }
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button 
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer ${getPriorityColor(todo.priority)}`}
+              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer capitalize ${getPriorityColor(todo.priority)}`}
+              style={getPriorityStyle(todo.priority)}
             >
               {todo.priority}
             </button>
@@ -150,27 +174,19 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange }
             className="z-[10000] bg-popover border border-border shadow-lg"
             sideOffset={5}
           >
-            <DropdownMenuItem 
-              onClick={() => onPriorityChange(todo.id, "low")}
-              className="cursor-pointer"
-            >
-              <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-              Low
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => onPriorityChange(todo.id, "medium")}
-              className="cursor-pointer"
-            >
-              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-2"></span>
-              Medium
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => onPriorityChange(todo.id, "high")}
-              className="cursor-pointer"
-            >
-              <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2"></span>
-              High
-            </DropdownMenuItem>
+            {priorities.map((priority) => (
+              <DropdownMenuItem 
+                key={priority.id}
+                onClick={() => onPriorityChange(todo.id, priority.name)}
+                className="cursor-pointer"
+              >
+                <span 
+                  className="inline-block w-2 h-2 rounded-full mr-2"
+                  style={{ backgroundColor: priority.color }}
+                ></span>
+                <span className="capitalize">{priority.name}</span>
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -199,8 +215,9 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange }
 
 export function TodoList() {
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [priorities, setPriorities] = useState<CustomPriority[]>([]);
   const [newTodo, setNewTodo] = useState("");
-  const [newPriority, setNewPriority] = useState<"low" | "medium" | "high">("medium");
+  const [newPriority, setNewPriority] = useState<string>("medium");
   const [loading, setLoading] = useState(true);
   const [hideCompleted, setHideCompleted] = useState(true);
 
@@ -211,9 +228,10 @@ export function TodoList() {
     })
   );
 
-  // Fetch todos from database
+  // Fetch todos and priorities from database
   useEffect(() => {
     fetchTodos();
+    fetchPriorities();
   }, []);
 
   const fetchTodos = async () => {
@@ -241,6 +259,36 @@ export function TodoList() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPriorities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_priorities')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        toast({
+          title: "Error fetching priorities",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setPriorities(data || []);
+        // Set first priority as default for new todos
+        if (data && data.length > 0) {
+          setNewPriority(data[0].name);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching priorities:', error);
+      toast({
+        title: "Error fetching priorities",
+        description: "An unexpected error occurred",
+        variant: "destructive"
+      });
     }
   };
 
@@ -412,7 +460,7 @@ export function TodoList() {
     }
 };
 
-const updatePriority = async (id: string, priority: "low" | "medium" | "high") => {
+const updatePriority = async (id: string, priority: string) => {
   try {
     const { error } = await supabase
       .from('todos')
@@ -495,12 +543,14 @@ const totalCount = todos.length;
           />
           <select
             value={newPriority}
-            onChange={(e) => setNewPriority(e.target.value as "low" | "medium" | "high")}
+            onChange={(e) => setNewPriority(e.target.value)}
             className="px-3 py-2 border rounded-md bg-background"
           >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
+            {priorities.map((priority) => (
+              <option key={priority.id} value={priority.name} className="capitalize">
+                {priority.name}
+              </option>
+            ))}
           </select>
           <Button onClick={addTodo} className="flex-shrink-0">
             <Plus className="w-4 h-4 mr-2" />
@@ -524,6 +574,7 @@ const totalCount = todos.length;
                 onDelete={deleteTodo}
                 onEdit={editTodo}
                 onPriorityChange={updatePriority}
+                priorities={priorities}
               />
             ))}
           </div>

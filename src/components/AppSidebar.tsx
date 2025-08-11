@@ -1,5 +1,5 @@
 
-import { Calendar, CheckSquare, FileText, Home, Plus, Clock } from "lucide-react";
+import { Calendar, CheckSquare, FileText, Home, Plus, Clock, Settings } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -19,6 +19,7 @@ const navigationItems = [
   { title: "Time Log", url: "/timelog", icon: Clock },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Notes", url: "/notes", icon: FileText },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

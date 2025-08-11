@@ -9,7 +9,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
-import { Home, CheckSquare, Clock, Calendar, FileText, Zap, LogOut } from "lucide-react";
+import { Home, CheckSquare, Clock, Calendar, FileText, Zap, LogOut, Settings } from "lucide-react";
 import { CyberTerminal } from "@/components/CyberTerminal";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,7 @@ import NotesPage from "./pages/NotesPage";
 import AuthPage from "./pages/AuthPage";
 import TerminalAuthPage from "./pages/TerminalAuthPage";
 import NotFound from "./pages/NotFound";
+import SettingsPage from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -295,6 +296,18 @@ const App = () => {
                           </Button>
                         )}
                       </NavLink>
+                      <NavLink to="/settings">
+                        {({ isActive }) => (
+                          <Button 
+                            variant={isActive ? "default" : "ghost"} 
+                            size="sm" 
+                            className={`gap-2 font-mono terminal-border ${isActive ? 'neon-glow' : 'hover:neon-glow'}`}
+                          >
+                            <Settings className="w-4 h-4" />
+                            SETTINGS
+                          </Button>
+                        )}
+                      </NavLink>
                       
                       <Button 
                         onClick={handleLogout}
@@ -318,6 +331,7 @@ const App = () => {
                         <Route path="/timelog" element={<TimeLogPage />} />
                         <Route path="/calendar" element={<CalendarPage />} />
                         <Route path="/notes" element={<NotesPage />} />
+                        <Route path="/settings" element={<SettingsPage />} />
                         <Route path="/auth" element={<Navigate to="/" replace />} />
                         <Route path="/auth/signup" element={<Navigate to="/" replace />} />
                         <Route path="*" element={<NotFound />} />
