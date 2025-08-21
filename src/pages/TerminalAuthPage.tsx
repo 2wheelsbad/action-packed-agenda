@@ -12,7 +12,7 @@ interface TerminalLine {
 
 export default function TerminalAuthPage() {
   const [lines, setLines] = useState<TerminalLine[]>([
-    { type: 'system', text: 'CYBER_PRODUCTIVE v2.0.1 - Authentication Terminal' },
+    { type: 'system', text: 'TERMINAL_TIME v2.0.1 - Authentication Terminal' },
     { type: 'system', text: '================================================' },
     { type: 'system', text: 'Available commands:' },
     { type: 'system', text: '  login -g                     : Google OAuth login' },
@@ -170,7 +170,7 @@ export default function TerminalAuthPage() {
       <div className="flex items-center justify-center p-6 terminal-border border-b">
         <div className="flex items-center gap-2">
           <Zap className="w-8 h-8 text-primary neon-glow" />
-          <h1 className="text-2xl font-bold font-mono neon-glow">CYBER_PRODUCTIVE</h1>
+          <h1 className="text-2xl font-bold font-mono neon-glow">TERMINAL_TIME</h1>
         </div>
       </div>
 

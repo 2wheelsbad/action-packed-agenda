@@ -73,7 +73,7 @@ export default function AuthPage() {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Zap className="w-8 h-8 text-primary neon-glow" />
-            <CardTitle className="text-2xl font-mono neon-glow">CYBER_PRODUCTIVE</CardTitle>
+            <CardTitle className="text-2xl font-mono neon-glow">TERMINAL_TIME</CardTitle>
           </div>
           <CardDescription className="text-muted-foreground">
             Create your cyber account

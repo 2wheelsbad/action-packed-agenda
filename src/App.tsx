@@ -230,7 +230,7 @@ const App = () => {
                       <SidebarTrigger />
                       <div className="flex items-center gap-2">
                         <Zap className="w-6 h-6 text-primary neon-glow" />
-                        <h1 className="text-xl font-bold font-mono neon-glow">CYBER_PRODUCTIVE</h1>
+                        <h1 className="text-xl font-bold font-mono neon-glow">TERMINAL_TIME</h1>
                       </div>
                     </div>
                     
