@@ -4,9 +4,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Settings, Palette } from "lucide-react";
+import { Plus, Trash2, Settings, Palette, GripVertical } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   Dialog,
   DialogContent,
@@ -27,12 +46,79 @@ interface CustomPriority {
   updated_at: string;
 }
 
+interface SortablePriorityItemProps {
+  priority: CustomPriority;
+  onDelete: (id: string, name: string) => void;
+  getPriorityStyle: (color: string) => any;
+}
+
+function SortablePriorityItem({ priority, onDelete, getPriorityStyle }: SortablePriorityItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: priority.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 bg-background"
+    >
+      <div className="flex items-center gap-3">
+        <button
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-accent rounded"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </button>
+        <div
+          className="w-4 h-4 rounded-full"
+          style={{ backgroundColor: priority.color }}
+        />
+        <Badge 
+          variant="outline"
+          style={getPriorityStyle(priority.color)}
+          className="capitalize"
+        >
+          {priority.name}
+        </Badge>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onDelete(priority.id, priority.name)}
+        className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+      >
+        <Trash2 className="w-3 h-3" />
+      </Button>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const [priorities, setPriorities] = useState<CustomPriority[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddingPriority, setIsAddingPriority] = useState(false);
   const [newPriorityName, setNewPriorityName] = useState("");
   const [newPriorityColor, setNewPriorityColor] = useState("#6b7280");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const colorOptions = [
     { name: "Gray", value: "#6b7280" },
@@ -175,6 +261,41 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = priorities.findIndex((priority) => priority.id === active.id);
+      const newIndex = priorities.findIndex((priority) => priority.id === over?.id);
+
+      const newPriorities = arrayMove(priorities, oldIndex, newIndex);
+      
+      // Update sort_order for all affected priorities
+      const updatesPromises = newPriorities.map((priority, index) => 
+        supabase
+          .from('custom_priorities')
+          .update({ sort_order: index })
+          .eq('id', priority.id)
+      );
+
+      try {
+        await Promise.all(updatesPromises);
+        setPriorities(newPriorities.map((p, index) => ({ ...p, sort_order: index })));
+        toast({
+          title: "Priority order updated",
+          description: "Your priority order has been saved",
+        });
+      } catch (error) {
+        console.error('Error updating priority order:', error);
+        toast({
+          title: "Error updating order",
+          description: "Failed to save new priority order",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   const getPriorityStyle = (color: string) => ({
     backgroundColor: color + '20',
     borderColor: color + '50',
@@ -277,41 +398,39 @@ export default function SettingsPage() {
             </Dialog>
           </div>
 
-          <div className="grid gap-3">
+          <div className="space-y-3">
             {priorities.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Palette className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No custom priorities yet. Add one to get started!</p>
               </div>
             ) : (
-              priorities.map((priority) => (
-                <div
-                  key={priority.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50"
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Drag and drop to reorder priorities. This affects how todos are sorted.
+                </p>
+                <DndContext 
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: priority.color }}
-                    />
-                    <Badge 
-                      variant="outline"
-                      style={getPriorityStyle(priority.color)}
-                      className="capitalize"
-                    >
-                      {priority.name}
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deletePriority(priority.id, priority.name)}
-                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                  <SortableContext 
+                    items={priorities}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              ))
+                    <div className="space-y-2">
+                      {priorities.map((priority) => (
+                        <SortablePriorityItem
+                          key={priority.id}
+                          priority={priority}
+                          onDelete={deletePriority}
+                          getPriorityStyle={getPriorityStyle}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </div>
             )}
           </div>
         </CardContent>

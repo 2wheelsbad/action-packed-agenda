@@ -487,7 +487,29 @@ const updatePriority = async (id: string, priority: string) => {
   }
 };
 
-const filteredTodos = hideCompleted ? todos.filter(todo => !todo.completed) : todos;
+// Sort todos by priority order, then by completion status, then by creation date
+const sortedTodos = [...todos].sort((a, b) => {
+  // First, separate completed and uncompleted todos
+  if (a.completed !== b.completed) {
+    return a.completed ? 1 : -1; // Uncompleted todos first
+  }
+
+  // For todos with the same completion status, sort by priority order
+  const priorityA = priorities.find(p => p.name === a.priority);
+  const priorityB = priorities.find(p => p.name === b.priority);
+  
+  const sortOrderA = priorityA?.sort_order ?? 999;
+  const sortOrderB = priorityB?.sort_order ?? 999;
+  
+  if (sortOrderA !== sortOrderB) {
+    return sortOrderA - sortOrderB;
+  }
+  
+  // If same priority, sort by creation date (newest first)
+  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+});
+
+const filteredTodos = hideCompleted ? sortedTodos.filter(todo => !todo.completed) : sortedTodos;
 const completedCount = todos.filter(todo => todo.completed).length;
 const totalCount = todos.length;
 
