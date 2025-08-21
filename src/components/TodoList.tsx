@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   DndContext,
@@ -24,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, GripVertical, Trash2, Edit3, CheckSquare, Filter, Eye, EyeOff } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit3, CheckSquare, Filter, Eye, EyeOff, ChevronRight, ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,11 +32,13 @@ interface Todo {
   id: string;
   text: string;
   completed: boolean;
-  priority: string; // Changed to string to support custom priorities
+  priority: string;
   created_at: string;
   updated_at: string;
   user_id: string;
   completed_at?: string;
+  parent_id?: string;
+  sort_order: number;
 }
 
 interface CustomPriority {
@@ -50,16 +51,34 @@ interface CustomPriority {
   updated_at: string;
 }
 
+interface HierarchicalTodo extends Todo {
+  subtasks: Todo[];
+  isExpanded: boolean;
+}
+
 interface SortableTodoItemProps {
-  todo: Todo;
+  todo: HierarchicalTodo;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, text: string) => void;
   onPriorityChange: (id: string, priority: string) => void;
+  onAddSubtask: (parentId: string) => void;
+  onToggleExpand: (id: string) => void;
   priorities: CustomPriority[];
+  level?: number;
 }
 
-function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange, priorities }: SortableTodoItemProps) {
+function SortableTodoItem({ 
+  todo, 
+  onToggle, 
+  onDelete, 
+  onEdit, 
+  onPriorityChange, 
+  onAddSubtask, 
+  onToggleExpand, 
+  priorities, 
+  level = 0 
+}: SortableTodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
 
@@ -90,9 +109,8 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange, 
   const getPriorityColor = (priorityName: string) => {
     const priority = priorities.find(p => p.name === priorityName);
     if (priority) {
-      return `border-2 text-white`; // We'll use inline styles for color
+      return `border-2 text-white`;
     }
-    // Fallback for unknown priorities
     return "bg-gray-100 text-gray-800 border-gray-200";
   };
 
@@ -108,108 +126,166 @@ function SortableTodoItem({ todo, onToggle, onDelete, onEdit, onPriorityChange, 
     return {};
   };
 
+  const completedSubtasks = todo.subtasks.filter(st => st.completed).length;
+  const totalSubtasks = todo.subtasks.length;
+
   return (
-    <Card
-      ref={setNodeRef}
-      style={style}
-      className={`task-item p-4 ${todo.completed ? "opacity-60" : ""} ${isDragging ? "shadow-lg" : ""}`}
-    >
-      <div className="flex items-center gap-3">
-        <button
-          className="drag-handle text-gray-400 hover:text-gray-600"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
+    <div style={{ marginLeft: `${level * 24}px` }}>
+      <Card
+        ref={setNodeRef}
+        style={style}
+        className={`task-item p-4 ${todo.completed ? "opacity-60" : ""} ${isDragging ? "shadow-lg" : ""} ${level > 0 ? "border-l-4 border-primary/30" : ""}`}
+      >
+        <div className="flex items-center gap-3">
+          <button
+            className="drag-handle text-gray-400 hover:text-gray-600"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
 
-        <Checkbox
-          checked={todo.completed}
-          onCheckedChange={() => onToggle(todo.id)}
-          className="flex-shrink-0"
-        />
-
-        <div className="flex-1">
-          {isEditing ? (
-            <Input
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              onBlur={handleEdit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleEdit();
-                if (e.key === "Escape") {
-                  setEditText(todo.text);
-                  setIsEditing(false);
-                }
-              }}
-              className="text-sm"
-              autoFocus
-            />
-          ) : (
-            <div>
-              <p className={`text-sm ${todo.completed ? "line-through" : ""}`}>
-                {todo.text}
-              </p>
-              {todo.completed && todo.completed_at && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Completed: {new Date(todo.completed_at).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button 
-              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer capitalize ${getPriorityColor(todo.priority)}`}
-              style={getPriorityStyle(todo.priority)}
+          {totalSubtasks > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onToggleExpand(todo.id)}
+              className="h-6 w-6 p-0"
             >
-              {todo.priority}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            side="bottom" 
-            align="start" 
-            className="z-[10000] bg-popover border border-border shadow-lg"
-            sideOffset={5}
-          >
-            {priorities.map((priority) => (
-              <DropdownMenuItem 
-                key={priority.id}
-                onClick={() => onPriorityChange(todo.id, priority.name)}
-                className="cursor-pointer"
-              >
-                <span 
-                  className="inline-block w-2 h-2 rounded-full mr-2"
-                  style={{ backgroundColor: priority.color }}
-                ></span>
-                <span className="capitalize">{priority.name}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {todo.isExpanded ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+            </Button>
+          )}
 
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleEdit}
-            className="h-8 w-8 p-0"
-          >
-            <Edit3 className="w-3 h-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(todo.id)}
-            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
+          <Checkbox
+            checked={todo.completed}
+            onCheckedChange={() => onToggle(todo.id)}
+            className="flex-shrink-0"
+          />
+
+          <div className="flex-1">
+            {isEditing ? (
+              <Input
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onBlur={handleEdit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleEdit();
+                  if (e.key === "Escape") {
+                    setEditText(todo.text);
+                    setIsEditing(false);
+                  }
+                }}
+                className="text-sm"
+                autoFocus
+              />
+            ) : (
+              <div>
+                <p className={`text-sm ${todo.completed ? "line-through" : ""}`}>
+                  {todo.text}
+                </p>
+                {totalSubtasks > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {completedSubtasks}/{totalSubtasks} subtasks completed
+                  </p>
+                )}
+                {todo.completed && todo.completed_at && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Completed: {new Date(todo.completed_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button 
+                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer capitalize ${getPriorityColor(todo.priority)}`}
+                style={getPriorityStyle(todo.priority)}
+              >
+                {todo.priority}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              side="bottom" 
+              align="start" 
+              className="z-[10000] bg-popover border border-border shadow-lg"
+              sideOffset={5}
+            >
+              {priorities.map((priority) => (
+                <DropdownMenuItem 
+                  key={priority.id}
+                  onClick={() => onPriorityChange(todo.id, priority.name)}
+                  className="cursor-pointer"
+                >
+                  <span 
+                    className="inline-block w-2 h-2 rounded-full mr-2"
+                    style={{ backgroundColor: priority.color }}
+                  ></span>
+                  <span className="capitalize">{priority.name}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onAddSubtask(todo.id)}
+              className="h-8 w-8 p-0"
+              title="Add subtask"
+            >
+              <Plus className="w-3 h-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEdit}
+              className="h-8 w-8 p-0"
+            >
+              <Edit3 className="w-3 h-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(todo.id)}
+              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      {/* Render subtasks if expanded */}
+      {todo.isExpanded && todo.subtasks.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {todo.subtasks.map((subtask) => (
+            <SortableTodoItem
+              key={subtask.id}
+              todo={{
+                ...subtask,
+                subtasks: [],
+                isExpanded: false
+              }}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              onPriorityChange={onPriorityChange}
+              onAddSubtask={onAddSubtask}
+              onToggleExpand={onToggleExpand}
+              priorities={priorities}
+              level={level + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -220,6 +296,7 @@ export function TodoList() {
   const [newPriority, setNewPriority] = useState<string>("medium");
   const [loading, setLoading] = useState(true);
   const [hideCompleted, setHideCompleted] = useState(true);
+  const [expandedTodos, setExpandedTodos] = useState<Set<string>>(new Set());
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -228,7 +305,6 @@ export function TodoList() {
     })
   );
 
-  // Fetch todos and priorities from database
   useEffect(() => {
     fetchTodos();
     fetchPriorities();
@@ -277,7 +353,6 @@ export function TodoList() {
         });
       } else {
         setPriorities(data || []);
-        // Set first priority as default for new todos
         if (data && data.length > 0) {
           setNewPriority(data[0].name);
         }
@@ -290,6 +365,23 @@ export function TodoList() {
         variant: "destructive"
       });
     }
+  };
+
+  // Organize todos into hierarchical structure
+  const organizeHierarchicalTodos = (): HierarchicalTodo[] => {
+    const parentTodos = todos.filter(todo => !todo.parent_id);
+    
+    return parentTodos.map(parent => {
+      const subtasks = todos
+        .filter(todo => todo.parent_id === parent.id)
+        .sort((a, b) => a.sort_order - b.sort_order);
+      
+      return {
+        ...parent,
+        subtasks,
+        isExpanded: expandedTodos.has(parent.id)
+      };
+    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -309,7 +401,7 @@ export function TodoList() {
     }
   };
 
-  const addTodo = async () => {
+  const addTodo = async (parentId?: string) => {
     if (newTodo.trim()) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -322,13 +414,19 @@ export function TodoList() {
           return;
         }
 
+        const maxSortOrder = parentId 
+          ? Math.max(...todos.filter(t => t.parent_id === parentId).map(t => t.sort_order), -1)
+          : Math.max(...todos.filter(t => !t.parent_id).map(t => t.sort_order), -1);
+
         const { data, error } = await supabase
           .from('todos')
           .insert({
             text: newTodo.trim(),
             priority: newPriority,
             completed: false,
-            user_id: user.id
+            user_id: user.id,
+            parent_id: parentId,
+            sort_order: maxSortOrder + 1
           })
           .select()
           .single();
@@ -343,7 +441,7 @@ export function TodoList() {
           setTodos([data as Todo, ...todos]);
           setNewTodo("");
           toast({
-            title: "Todo added",
+            title: parentId ? "Subtask added" : "Todo added",
             description: `"${data.text}" has been added to your list.`,
           });
         }
@@ -354,6 +452,48 @@ export function TodoList() {
           description: "An unexpected error occurred",
           variant: "destructive"
         });
+      }
+    }
+  };
+
+  const addSubtask = async (parentId: string) => {
+    const subtaskText = prompt("Enter subtask text:");
+    if (subtaskText?.trim()) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const maxSortOrder = Math.max(...todos.filter(t => t.parent_id === parentId).map(t => t.sort_order), -1);
+
+        const { data, error } = await supabase
+          .from('todos')
+          .insert({
+            text: subtaskText.trim(),
+            priority: newPriority,
+            completed: false,
+            user_id: user.id,
+            parent_id: parentId,
+            sort_order: maxSortOrder + 1
+          })
+          .select()
+          .single();
+
+        if (error) {
+          toast({
+            title: "Error adding subtask",
+            description: error.message,
+            variant: "destructive"
+          });
+        } else {
+          setTodos([data as Todo, ...todos]);
+          setExpandedTodos(prev => new Set(prev).add(parentId));
+          toast({
+            title: "Subtask added",
+            description: `"${data.text}" has been added as a subtask.`,
+          });
+        }
+      } catch (error) {
+        console.error('Error adding subtask:', error);
       }
     }
   };
@@ -458,60 +598,73 @@ export function TodoList() {
         variant: "destructive"
       });
     }
-};
+  };
 
-const updatePriority = async (id: string, priority: string) => {
-  try {
-    const { error } = await supabase
-      .from('todos')
-      .update({ priority })
-      .eq('id', id);
+  const updatePriority = async (id: string, priority: string) => {
+    try {
+      const { error } = await supabase
+        .from('todos')
+        .update({ priority })
+        .eq('id', id);
 
-    if (error) {
+      if (error) {
+        toast({
+          title: "Error updating priority",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setTodos(todos.map(t => t.id === id ? { ...t, priority } : t));
+        toast({ title: "Priority updated", description: `Set to ${priority}.` });
+      }
+    } catch (error) {
+      console.error('Error updating priority:', error);
       toast({
         title: "Error updating priority",
-        description: error.message,
+        description: "An unexpected error occurred",
         variant: "destructive",
       });
-    } else {
-      setTodos(todos.map(t => t.id === id ? { ...t, priority } : t));
-      toast({ title: "Priority updated", description: `Set to ${priority}.` });
     }
-  } catch (error) {
-    console.error('Error updating priority:', error);
-    toast({
-      title: "Error updating priority",
-      description: "An unexpected error occurred",
-      variant: "destructive",
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedTodos(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
     });
-  }
-};
+  };
 
-// Sort todos by priority order, then by completion status, then by creation date
-const sortedTodos = [...todos].sort((a, b) => {
-  // First, separate completed and uncompleted todos
-  if (a.completed !== b.completed) {
-    return a.completed ? 1 : -1; // Uncompleted todos first
-  }
+  // Sort hierarchical todos by priority order, then by completion status
+  const hierarchicalTodos = organizeHierarchicalTodos();
+  const sortedHierarchicalTodos = [...hierarchicalTodos].sort((a, b) => {
+    if (a.completed !== b.completed) {
+      return a.completed ? 1 : -1;
+    }
 
-  // For todos with the same completion status, sort by priority order
-  const priorityA = priorities.find(p => p.name === a.priority);
-  const priorityB = priorities.find(p => p.name === b.priority);
-  
-  const sortOrderA = priorityA?.sort_order ?? 999;
-  const sortOrderB = priorityB?.sort_order ?? 999;
-  
-  if (sortOrderA !== sortOrderB) {
-    return sortOrderA - sortOrderB;
-  }
-  
-  // If same priority, sort by creation date (newest first)
-  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-});
+    const priorityA = priorities.find(p => p.name === a.priority);
+    const priorityB = priorities.find(p => p.name === b.priority);
+    
+    const sortOrderA = priorityA?.sort_order ?? 999;
+    const sortOrderB = priorityB?.sort_order ?? 999;
+    
+    if (sortOrderA !== sortOrderB) {
+      return sortOrderA - sortOrderB;
+    }
+    
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
-const filteredTodos = hideCompleted ? sortedTodos.filter(todo => !todo.completed) : sortedTodos;
-const completedCount = todos.filter(todo => todo.completed).length;
-const totalCount = todos.length;
+  const filteredHierarchicalTodos = hideCompleted 
+    ? sortedHierarchicalTodos.filter(todo => !todo.completed) 
+    : sortedHierarchicalTodos;
+
+  const completedCount = todos.filter(todo => todo.completed).length;
+  const totalCount = todos.length;
 
   if (loading) {
     return (
@@ -574,7 +727,7 @@ const totalCount = todos.length;
               </option>
             ))}
           </select>
-          <Button onClick={addTodo} className="flex-shrink-0">
+          <Button onClick={() => addTodo()} className="flex-shrink-0">
             <Plus className="w-4 h-4 mr-2" />
             Add
           </Button>
@@ -586,9 +739,9 @@ const totalCount = todos.length;
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={filteredTodos.map(todo => todo.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={filteredHierarchicalTodos.map(todo => todo.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3">
-            {filteredTodos.map((todo) => (
+            {filteredHierarchicalTodos.map((todo) => (
               <SortableTodoItem
                 key={todo.id}
                 todo={todo}
@@ -596,6 +749,8 @@ const totalCount = todos.length;
                 onDelete={deleteTodo}
                 onEdit={editTodo}
                 onPriorityChange={updatePriority}
+                onAddSubtask={addSubtask}
+                onToggleExpand={toggleExpand}
                 priorities={priorities}
               />
             ))}
@@ -603,7 +758,7 @@ const totalCount = todos.length;
         </SortableContext>
       </DndContext>
 
-      {filteredTodos.length === 0 && todos.length > 0 && (
+      {filteredHierarchicalTodos.length === 0 && todos.length > 0 && (
         <Card className="p-8 text-center">
           <Filter className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No tasks match your filter</h3>

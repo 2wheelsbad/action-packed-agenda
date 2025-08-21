@@ -170,7 +170,9 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
+          parent_id: string | null
           priority: string
+          sort_order: number
           text: string
           updated_at: string
           user_id: string
@@ -180,7 +182,9 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          parent_id?: string | null
           priority?: string
+          sort_order?: number
           text: string
           updated_at?: string
           user_id: string
@@ -190,12 +194,22 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          parent_id?: string | null
           priority?: string
+          sort_order?: number
           text?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "todos_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
