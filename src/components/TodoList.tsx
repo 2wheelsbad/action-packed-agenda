@@ -27,6 +27,7 @@ import { Plus, GripVertical, Trash2, Edit3, CheckSquare, Filter, Eye, EyeOff, Ch
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { AddSubtaskModal } from "@/components/AddSubtaskModal";
 
 interface Todo {
   id: string;
@@ -297,6 +298,8 @@ export function TodoList() {
   const [loading, setLoading] = useState(true);
   const [hideCompleted, setHideCompleted] = useState(true);
   const [expandedTodos, setExpandedTodos] = useState<Set<string>>(new Set());
+  const [subtaskModalOpen, setSubtaskModalOpen] = useState(false);
+  const [selectedParentTask, setSelectedParentTask] = useState<Todo | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -456,45 +459,52 @@ export function TodoList() {
     }
   };
 
-  const addSubtask = async (parentId: string) => {
-    const subtaskText = prompt("Enter subtask text:");
-    if (subtaskText?.trim()) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  const openSubtaskModal = (parentId: string) => {
+    const parentTask = todos.find(t => t.id === parentId);
+    if (parentTask) {
+      setSelectedParentTask(parentTask);
+      setSubtaskModalOpen(true);
+    }
+  };
 
-        const maxSortOrder = Math.max(...todos.filter(t => t.parent_id === parentId).map(t => t.sort_order), -1);
+  const addSubtask = async (text: string, priority: string) => {
+    if (!selectedParentTask) return;
 
-        const { data, error } = await supabase
-          .from('todos')
-          .insert({
-            text: subtaskText.trim(),
-            priority: newPriority,
-            completed: false,
-            user_id: user.id,
-            parent_id: parentId,
-            sort_order: maxSortOrder + 1
-          })
-          .select()
-          .single();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        if (error) {
-          toast({
-            title: "Error adding subtask",
-            description: error.message,
-            variant: "destructive"
-          });
-        } else {
-          setTodos([data as Todo, ...todos]);
-          setExpandedTodos(prev => new Set(prev).add(parentId));
-          toast({
-            title: "Subtask added",
-            description: `"${data.text}" has been added as a subtask.`,
-          });
-        }
-      } catch (error) {
-        console.error('Error adding subtask:', error);
+      const maxSortOrder = Math.max(...todos.filter(t => t.parent_id === selectedParentTask.id).map(t => t.sort_order), -1);
+
+      const { data, error } = await supabase
+        .from('todos')
+        .insert({
+          text: text,
+          priority: priority,
+          completed: false,
+          user_id: user.id,
+          parent_id: selectedParentTask.id,
+          sort_order: maxSortOrder + 1
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast({
+          title: "Error adding subtask",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setTodos([data as Todo, ...todos]);
+        setExpandedTodos(prev => new Set(prev).add(selectedParentTask.id));
+        toast({
+          title: "Subtask added",
+          description: `"${data.text}" has been added as a subtask.`,
+        });
       }
+    } catch (error) {
+      console.error('Error adding subtask:', error);
     }
   };
 
@@ -749,7 +759,7 @@ export function TodoList() {
                 onDelete={deleteTodo}
                 onEdit={editTodo}
                 onPriorityChange={updatePriority}
-                onAddSubtask={addSubtask}
+                onAddSubtask={openSubtaskModal}
                 onToggleExpand={toggleExpand}
                 priorities={priorities}
               />
@@ -773,6 +783,14 @@ export function TodoList() {
           <p className="text-muted-foreground">Add your first todo to get started!</p>
         </Card>
       )}
+
+      <AddSubtaskModal
+        isOpen={subtaskModalOpen}
+        onClose={() => setSubtaskModalOpen(false)}
+        onAdd={addSubtask}
+        priorities={priorities}
+        parentTaskText={selectedParentTask?.text || ""}
+      />
     </div>
   );
 }
